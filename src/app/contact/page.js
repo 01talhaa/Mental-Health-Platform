@@ -1,8 +1,16 @@
+import Contact from '@/components/ContactPage/Contact'
+import Header from '@/components/Homepage/Header'
 import React from 'react'
 
 const page = () => {
   return (
-    <div>page</div>
+    <>
+    <Header/>
+
+    <div className="mt-20">
+      <Contact/>
+    </div>
+    </>
   )
 }
 

@@ -24,7 +24,7 @@ const HeroSection = () => {
   };
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 overflow-hidden top-20">
+    <div className="relative bg-gradient-to-br from-blue-50 to-purple-50 overflow-hidden top-20">
       {/* Abstract Background Shapes */}
       <div className="absolute inset-0 overflow-hidden">
         <motion.div
@@ -60,7 +60,7 @@ const HeroSection = () => {
       <div className="relative container mx-auto px-4 pt-20 pb-32">
         <div className="max-w-4xl mx-auto text-center">
           {/* Language Toggle */}
-          <div className="absolute top-4 right-4 space-x-2">
+          {/* <div className="absolute top-4 right-4 space-x-2">
             <button
               onClick={() => setLanguage('en')}
               className={`px-3 py-1 rounded-full text-sm ${
@@ -81,7 +81,7 @@ const HeroSection = () => {
             >
               বাং
             </button>
-          </div>
+          </div> */}
 
           {/* Hero Content */}
           <motion.div

@@ -96,7 +96,7 @@ const teamMembers = [
       "WHO Mental Health Advisory Board Member",
       "TED Speaker on Digital Mental Health"
     ],
-    image: "/api/placeholder/300/300"
+    image: "https://www.materialculture.nl/sites/default/files/styles/hero_mobile/public/photo%20for%20website.jpg?h=c6d1cd02&itok=gNnwaqIU"
   },
   {
     name: "Michael Chen, MBA",
@@ -112,7 +112,7 @@ const teamMembers = [
       "Tech Impact Award 2023",
       "Forbes 40 Under 40"
     ],
-    image: "/api/placeholder/300/300"
+    image: "https://media.licdn.com/dms/image/v2/D4E03AQHP5C1znKbEUw/profile-displayphoto-shrink_200_200/profile-displayphoto-shrink_200_200/0/1731078021777?e=2147483647&v=beta&t=XtoWOhPVCpdr7X4AHzadK3Gzudrz_-ysDNDYBnnApqc"
   },
   {
     name: "Dr. Emily Rodriguez, Psy.D",
@@ -128,7 +128,7 @@ const teamMembers = [
       "Clinical Excellence Award 2023",
       "20+ Published Research Papers"
     ],
-    image: "/api/placeholder/300/300"
+    image: "https://photos.psychologytoday.com/e355f3cf-116c-4bd3-9d87-44942ea436c9/1/320x400.jpeg"
   }
 ];
 
@@ -528,3 +528,6 @@ export default function AboutPage() {
     </div>
   );
 }
+
+
+//AIzaSyD5cDWMauzFNobtxTrgb5rzxnRyppAK65g

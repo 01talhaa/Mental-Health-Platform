@@ -22,7 +22,7 @@ const Footer = () => {
       <div className="container mx-auto grid grid-cols-1 md:grid-cols-4 gap-12 px-6">
         {/* Left Column */}
         <div>
-          <h2 className="text-3xl font-bold">MindSpace</h2>
+          <h2 className="text-3xl font-bold">MindfulHealth</h2>
           <p className="mt-4 text-sm text-gray-400">Your path to mental wellness and personal growth.</p>
           <div className="flex space-x-4 mt-6">
             <RiFacebookFill className="text-2xl cursor-pointer hover:text-blue-500" />
