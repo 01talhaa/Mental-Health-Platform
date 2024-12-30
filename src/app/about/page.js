@@ -1,10 +1,13 @@
 import React from 'react'
-import Home from '@/components/Homepage/Home'
+import About from '@/components/Aboutpage/About'
 
 const page = () => {
   return (
-    <Home/>
+    <>
+    <About/>
+    </>
   )
 }
+
 
 export default page
