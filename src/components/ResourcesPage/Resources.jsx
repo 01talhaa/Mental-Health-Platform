@@ -55,7 +55,7 @@ const resources = [
     type: 'audio',
     duration: '20 min',
     category: 'meditation',
-    thumbnail: 'https://lh3.googleusercontent.com/proxy/ij1HmQVcVyM9j9p90z5xwQs-aY03CU0LGnIdK1gyayDIc8zBe4Me7nszgvmvpqgWt1keeG8_KtVWIz2TO0sTP3MIQxQZ4bhTpNuwCT1j',
+    thumbnail: 'https://media.karanbajaj.com/karan-live/wp-content/uploads/2016/02/18145003/How-to-meditate-in-2016_-A-complete-guide-Karan-Bajaj.png',
     progress: 75,
     popularity: 243,
     date: '2024-12-20'
