@@ -7,8 +7,9 @@ import AvatarGenerator from '../AvatarGenerator';
 const LoginForm = () => {
   const router = useRouter();
   const [formData, setFormData] = useState({
+    name: '',
     email: '',
-    password: '',
+    password: ''
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -18,10 +19,11 @@ const LoginForm = () => {
     setIsLoading(true);
     
     try {
-      // Add your login logic here
+      // Add your login validation logic here
+      // Should check against stored signup credentials
       router.push('/dashboard');
     } catch (err) {
-      setError('Invalid email or password');
+      setError('Invalid credentials');
     } finally {
       setIsLoading(false);
     }
@@ -32,10 +34,23 @@ const LoginForm = () => {
       <h2 className="text-3xl font-bold text-center mb-8 text-gray-800">Welcome Back</h2>
       
       <div className="mb-8">
-        <AvatarGenerator name={formData.email} size={120} />
+        <AvatarGenerator 
+          name={formData.name || formData.email} 
+          size={120} 
+        />
       </div>
       
       <form onSubmit={handleSubmit} className="space-y-6">
+        <div>
+          <input
+            type="text"
+            placeholder="Full Name"
+            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            value={formData.name}
+            onChange={(e) => setFormData({...formData, name: e.target.value})}
+            required
+          />
+        </div>
         <div>
           <input
             type="email"
@@ -55,16 +70,6 @@ const LoginForm = () => {
             onChange={(e) => setFormData({...formData, password: e.target.value})}
             required
           />
-        </div>
-        
-        <div className="flex items-center justify-between">
-          <label className="flex items-center">
-            <input type="checkbox" className="rounded text-indigo-600" />
-            <span className="ml-2 text-sm text-gray-600">Remember me</span>
-          </label>
-          <Link href="/forgot-password" className="text-sm text-indigo-600 hover:text-indigo-800">
-            Forgot Password?
-          </Link>
         </div>
         
         {error && (

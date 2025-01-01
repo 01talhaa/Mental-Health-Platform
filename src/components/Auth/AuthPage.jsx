@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import SignupPage from './SignUp/Signup';
 import StudentSignupForm from './StudentVerification/StudentVerification';
 import AnonymousForm from './AnonymousForm';
+import { SocialButtons } from '../ui/SocialButtons';
 
 const AuthPage = () => {
   const [authType, setAuthType] = useState('regular');
@@ -43,9 +44,16 @@ const AuthPage = () => {
         </button>
       </div>
 
-      {authType === 'regular' && <SignupPage />}
-      {authType === 'student' && <StudentSignupForm />}
-      {authType === 'anonymous' && <AnonymousForm />}
+      <div className="w-full max-w-md">
+        {authType === 'regular' && <SignupPage />}
+        {authType === 'student' && <StudentSignupForm />}
+        {authType === 'anonymous' && <AnonymousForm />}
+      </div>
+
+      <div className="mt-8 mb-10 w-full max-w-md flex flex-col items-center">
+        <p className="text-gray-600 mb-4">Or sign up with</p>
+        <SocialButtons />
+      </div>
     </div>
   );
 };
