@@ -2,7 +2,8 @@
 import React, { useState } from 'react';
 import LoginForm from './Login/Login';
 import StudentLoginForm from './StudentVerification/StudentLoginForm';
-import AnonymousForm from './AnonymousForm';
+import AnonymousLoginForm from './Login/AnonymousLogin';
+import { SocialButtons } from '../ui/SocialButtons';
 
 const LoginPage = () => {
   const [loginType, setLoginType] = useState('regular');
@@ -44,7 +45,12 @@ const LoginPage = () => {
 
       {loginType === 'regular' && <LoginForm />}
       {loginType === 'student' && <StudentLoginForm />}
-      {loginType === 'anonymous' && <AnonymousForm />}
+      {loginType === 'anonymous' && <AnonymousLoginForm />}
+
+      <div className="mt-8 mb-10 w-full max-w-md flex flex-col items-center">
+              <p className="text-gray-600 mb-4">Or sign up with</p>
+              <SocialButtons />
+            </div>
     </div>
   );
 };

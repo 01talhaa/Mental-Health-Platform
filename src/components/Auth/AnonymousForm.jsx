@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Copy, Check } from 'lucide-react';
 
 const generateSessionCode = () => {
   return `${Math.random().toString(36).substring(2, 8)}-${Math.random().toString(36).substring(2, 8)}`;
@@ -11,6 +12,7 @@ const AnonymousForm = () => {
   const [sessionCode, setSessionCode] = useState('');
   const [error, setError] = useState('');
   const [showSessionCode, setShowSessionCode] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const handleAnonymousAccess = async () => {
     setIsLoading(true);
@@ -34,6 +36,16 @@ const AnonymousForm = () => {
     }
   };
 
+  const handleCopyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(sessionCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000); // Reset copied state after 2 seconds
+    } catch (err) {
+      setError('Failed to copy code');
+    }
+  };
+
   return (
     <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full">
       <h2 className="text-3xl font-bold text-center mb-8 text-gray-800">Anonymous Access</h2>
@@ -41,9 +53,25 @@ const AnonymousForm = () => {
       <div className="space-y-6">
         {showSessionCode ? (
           <div className="space-y-4">
-            <div className="bg-gray-100 p-4 rounded-lg text-center">
+            <div className="bg-gray-100 p-4 rounded-lg text-center relative">
               <p className="text-sm text-gray-600 mb-2">Your Session Code:</p>
-              <p className="text-lg font-mono font-bold">{sessionCode}</p>
+              <div className="flex items-center justify-center gap-2">
+                <p className="text-lg font-mono font-bold">{sessionCode}</p>
+                <button
+                  onClick={handleCopyCode}
+                  className="p-1 hover:bg-gray-200 rounded-md transition-colors"
+                  title="Copy code"
+                >
+                  {copied ? (
+                    <Check className="w-5 h-5 text-green-600" />
+                  ) : (
+                    <Copy className="w-5 h-5 text-gray-600" />
+                  )}
+                </button>
+              </div>
+              {copied && (
+                <p className="text-sm text-green-600 mt-1">Code copied!</p>
+              )}
             </div>
             <p className="text-sm text-center text-gray-600">
               Save this code! You'll need it to access your session later.

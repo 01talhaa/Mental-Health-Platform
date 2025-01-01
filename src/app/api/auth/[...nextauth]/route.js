@@ -7,21 +7,15 @@ const handler = NextAuth({
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      authorization: {
-        params: {
-          prompt: "consent",
-          access_type: "offline",
-          response_type: "code"
-        }
-      }
     }),
     FacebookProvider({
       clientId: process.env.FACEBOOK_CLIENT_ID,
-      clientSecret: process.env.FACEBOOK_CLIENT_SECRET
-    })
+      clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
+    }),
   ],
   pages: {
-    signIn: '/auth/login',
+    signIn: '/login',
+    signOut: '/auth/signout',
     error: '/auth/error',
   },
   callbacks: {
@@ -29,9 +23,16 @@ const handler = NextAuth({
       return session;
     },
     async jwt({ token, user, account }) {
+      if (account && user) {
+        return {
+          ...token,
+          accessToken: account.access_token,
+          provider: account.provider,
+        };
+      }
       return token;
-    }
-  }
+    },
+  },
 });
 
 export { handler as GET, handler as POST };

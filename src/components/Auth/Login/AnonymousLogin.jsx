@@ -7,6 +7,7 @@ import Link from 'next/link';
 const AnonymousLoginForm = () => {
   const router = useRouter();
   const [sessionCode, setSessionCode] = useState('');
+  const [savedSessionCode, setSavedSessionCode] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -50,6 +51,13 @@ const AnonymousLoginForm = () => {
           />
         </div>
         
+        {savedSessionCode && (
+          <div className="bg-gray-100 p-4 rounded-lg">
+            <p className="text-sm text-gray-600">Last used session code:</p>
+            <p className="font-mono font-bold">{savedSessionCode}</p>
+          </div>
+        )}
+        
         {error && (
           <div className="bg-red-100 text-red-700 p-3 rounded-lg text-sm">
             {error}
@@ -65,8 +73,8 @@ const AnonymousLoginForm = () => {
         </button>
 
         <p className="text-center text-sm text-gray-600">
-          Need a session code? {' '}
-          <Link href="/anonymous-signup" className="text-indigo-600 hover:text-indigo-800">
+          Need a new session? {' '}
+          <Link href="/signup" className="text-indigo-600 hover:text-indigo-800">
             Create one here
           </Link>
         </p>
