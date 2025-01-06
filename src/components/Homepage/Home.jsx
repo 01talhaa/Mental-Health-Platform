@@ -6,10 +6,12 @@ import HowItWorks from './HowItWorks';
 import Footer from './Footer';
 import Chatbot from '../ChatbotPage/Chatbot';
 
+
 export default function Home() {
   return (
     <div>
       <Header />
+      {/* <Chat/> */}
       <HeroSection />
       <Chatbot/>
       <FeaturesSection />

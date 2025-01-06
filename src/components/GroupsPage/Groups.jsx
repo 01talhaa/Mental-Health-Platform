@@ -23,6 +23,9 @@ import {
   Bookmark,
   RefreshCw
 } from 'lucide-react';
+import { useThread } from '@/hooks/useThread';
+import { useAuth } from '@/hooks/useAuth';
+import GroupSupportFooter from './GroupSupportFooter';
 
 // Sample categories with meaningful mental health topics
 const categories = [
@@ -113,16 +116,112 @@ const responses = [
 ];
 
 const CommunityForum = () => {
-  const [activeView, setActiveView] = useState('categories'); // categories, threadList, thread
+  const [activeView, setActiveView] = useState('categories');
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedThread, setSelectedThread] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewThreadForm, setShowNewThreadForm] = useState(false);
   const [sortBy, setSortBy] = useState('recent');
   const [isAnonymous, setIsAnonymous] = useState(false);
-
-  // Rich text editor state
+  const [formData, setFormData] = useState({ title: '' });
+  const [replyContent, setReplyContent] = useState('');
   const [editorContent, setEditorContent] = useState('');
+  const [error, setError] = useState(null);
+
+  const { isLoading, error: threadError, createThread, getThreads, addReply, likeThread } = useThread();
+  const { isAuthenticated, user } = useAuth();
+
+  const handleCreateThread = async (e) => {
+    e.preventDefault();
+    if (!isAuthenticated) {
+      setError('Please log in to create a thread');
+      return;
+    }
+
+    try {
+      const thread = await createThread({
+        title: formData.title,
+        content: editorContent,
+        category: selectedCategory.id,
+        isAnonymous
+      });
+      setShowNewThreadForm(false);
+      setSelectedThread(thread);
+      setActiveView('thread');
+      setFormData({ title: '' });
+      setEditorContent('');
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleAddReply = async () => {
+    if (!isAuthenticated) {
+      setError('Please log in to reply');
+      return;
+    }
+
+    if (!replyContent.trim()) {
+      setError('Please enter a response');
+      return;
+    }
+
+    try {
+      const reply = await addReply(selectedThread.id, {
+        content: replyContent,
+        isAnonymous
+      });
+      setReplyContent('');
+      setSelectedThread(prev => ({
+        ...prev,
+        replies: [...prev.replies, reply]
+      }));
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleLike = async (threadId) => {
+    if (!isAuthenticated) {
+      setError('Please log in to like threads');
+      return;
+    }
+
+    try {
+      const updatedThread = await likeThread(threadId);
+      if (selectedThread?.id === threadId) {
+        setSelectedThread(updatedThread);
+      }
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleShare = async (threadId) => {
+    try {
+      const shareUrl = `${window.location.origin}/thread/${threadId}`;
+      await navigator.clipboard.writeText(shareUrl);
+      // Could add a toast notification here
+    } catch (err) {
+      setError('Failed to copy share link');
+    }
+  };
+
+  const handleReport = async (threadId) => {
+    if (!isAuthenticated) {
+      setError('Please log in to report content');
+      return;
+    }
+    // Implement report logic here
+  };
+
+  const handleBookmark = async (threadId) => {
+    if (!isAuthenticated) {
+      setError('Please log in to bookmark threads');
+      return;
+    }
+    // Implement bookmark logic here
+  };
 
   const CategoryCard = ({ category }) => (
     <div 
@@ -203,10 +302,22 @@ const CommunityForum = () => {
           </span>
         </div>
         <div className="flex items-center space-x-4">
-          <button className="text-gray-400 hover:text-gray-600">
+          <button 
+            className="text-gray-400 hover:text-gray-600"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleShare(thread.id);
+            }}
+          >
             <Share2 className="w-5 h-5" />
           </button>
-          <button className="text-gray-400 hover:text-gray-600">
+          <button 
+            className="text-gray-400 hover:text-gray-600"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleBookmark(thread.id);
+            }}
+          >
             <Bookmark className="w-5 h-5" />
           </button>
         </div>
@@ -215,7 +326,7 @@ const CommunityForum = () => {
   );
 
   const NewThreadForm = () => (
-    <div className="bg-white rounded-xl shadow-lg p-6">
+    <form onSubmit={handleCreateThread} className="bg-white rounded-xl shadow-lg p-6">
       <h3 className="text-xl font-semibold text-gray-800 mb-4">Create New Thread</h3>
       <div className="space-y-4">
         <div>
@@ -226,6 +337,9 @@ const CommunityForum = () => {
             type="text"
             className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Enter thread title..."
+            value={formData.title}
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            required
           />
         </div>
         <div>
@@ -237,6 +351,7 @@ const CommunityForum = () => {
             placeholder="Share your thoughts..."
             value={editorContent}
             onChange={(e) => setEditorContent(e.target.value)}
+            required
           />
         </div>
         <div className="flex items-center space-x-4">
@@ -252,17 +367,21 @@ const CommunityForum = () => {
         </div>
         <div className="flex justify-end space-x-4">
           <button
+            type="button"
             onClick={() => setShowNewThreadForm(false)}
             className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
           >
             Cancel
           </button>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+          <button 
+            type="submit"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
             Create Thread
           </button>
         </div>
       </div>
-    </div>
+    </form>
   );
 
   return (
@@ -307,6 +426,12 @@ const CommunityForum = () => {
 
       {/* Main Content */}
       <main className="max-w-6xl mx-auto px-4 py-8">
+        {error && (
+          <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-4">
+            {error}
+          </div>
+        )}
+
         {/* Search and Controls */}
         <div className="flex items-center justify-between mb-8">
           <div className="relative flex-1 max-w-lg">
@@ -341,7 +466,6 @@ const CommunityForum = () => {
 
         {activeView === 'threadList' && (
           <div className="space-y-6">
-            {/* Category Header */}
             <div className="bg-white rounded-xl p-6 mb-6">
               <h2 className="text-2xl font-bold text-gray-800 mb-2">
                 {selectedCategory.name}
@@ -349,18 +473,18 @@ const CommunityForum = () => {
               <p className="text-gray-600">{selectedCategory.description}</p>
             </div>
 
-            {/* Thread List */}
             <div className="space-y-4">
-              {threads.map((thread) => (
-                <ThreadCard key={thread.id} thread={thread} />
-              ))}
+              {threads
+                .filter(thread => thread.category === selectedCategory.id)
+                .map((thread) => (
+                  <ThreadCard key={thread.id} thread={thread} />
+                ))}
             </div>
           </div>
         )}
 
         {activeView === 'thread' && selectedThread && (
           <div className="space-y-6">
-            {/* Original Post */}
             <div className="bg-white rounded-xl shadow-sm p-6">
               <h2 className="text-2xl font-bold text-gray-800 mb-4">
                 {selectedThread.title}
@@ -387,7 +511,10 @@ const CommunityForum = () => {
               <p className="text-gray-700 mb-6">{selectedThread.content}</p>
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
-                  <button className="flex items-center space-x-1 text-gray-500 hover:text-blue-600">
+                  <button 
+                    onClick={() => handleLike(selectedThread.id)}
+                    className="flex items-center space-x-1 text-gray-500 hover:text-blue-600"
+                  >
                     <ThumbsUp className="w-5 h-5" />
                     <span>{selectedThread.likes}</span>
                   </button>
@@ -401,69 +528,86 @@ const CommunityForum = () => {
                   </button>
                 </div>
                 <div className="flex items-center space-x-4">
-                  <button className="text-gray-400 hover:text-gray-600">
+                  <button 
+                    onClick={() => handleShare(selectedThread.id)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
                     <Share2 className="w-5 h-5" />
                   </button>
-                  <button className="text-gray-400 hover:text-gray-600">
+                  <button 
+                    onClick={() => handleReport(selectedThread.id)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
                     <Flag className="w-5 h-5" />
                   </button>
                 </div>
               </div>
             </div>
 
-            {/* Responses */}
             <div className="space-y-4">
-              {responses.map((response) => (
-                <div key={response.id} className="bg-white rounded-xl shadow-sm p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-2">
-                      {response.author.isAnonymous ? (
-                        <EyeOff className="w-4 h-4 text-gray-400" />
-                      ) : (
-                        <>
-                          {response.author.isModerator && (
-                            <Shield className="w-4 h-4 text-blue-500" />
-                          )}
-                        </>
-                      )}
-                      <span className="text-gray-600">{response.author.name}</span>
-                      <span className="text-gray-500">
-                        {new Date(response.timestamp).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <button className="text-gray-400 hover:text-gray-600">
-                      <MoreVertical className="w-5 h-5" />
-                    </button>
-                  </div>
-                  <p className="text-gray-700 mb-4">{response.content}</p>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <button className="flex items-center space-x-1 text-gray-500 hover:text-blue-600">
-                        <ThumbsUp className="w-5 h-5" />
-                        <span>{response.likes}</span>
-                      </button>
-                      {response.isHelpful && (
-                        <span className="text-green-600 text-sm flex items-center">
-                          <Shield className="w-4 h-4 mr-1" />
-                          Helpful Response
+              {responses
+                .filter(response => response.threadId === selectedThread.id)
+                .map((response) => (
+                  <div key={response.id} className="bg-white rounded-xl shadow-sm p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-2">
+                        {response.author.isAnonymous ? (
+                          <EyeOff className="w-4 h-4 text-gray-400" />
+                        ) : (
+                          <>
+                            {response.author.isModerator && (
+                              <Shield className="w-4 h-4 text-blue-500" />
+                            )}
+                          </>
+                        )}
+                        <span className="text-gray-600">{response.author.name}</span>
+                        <span className="text-gray-500">
+                          {new Date(response.timestamp).toLocaleDateString()}
                         </span>
-                      )}
+                      </div>
+                      <button 
+                        onClick={() => handleReport(response.id)}
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        <MoreVertical className="w-5 h-5" />
+                      </button>
                     </div>
-                    <button className="text-gray-400 hover:text-gray-600">
-                      <Flag className="w-5 h-5" />
-                    </button>
+                    <p className="text-gray-700 mb-4">{response.content}</p>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <button 
+                          onClick={() => handleLike(response.id)}
+                          className="flex items-center space-x-1 text-gray-500 hover:text-blue-600"
+                        >
+                          <ThumbsUp className="w-5 h-5" />
+                          <span>{response.likes}</span>
+                        </button>
+                        {response.isHelpful && (
+                          <span className="text-green-600 text-sm flex items-center">
+                            <Shield className="w-4 h-4 mr-1" />
+                            Helpful Response
+                          </span>
+                        )}
+                      </div>
+                      <button 
+                        onClick={() => handleReport(response.id)}
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        <Flag className="w-5 h-5" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
             </div>
 
-            {/* Reply Box */}
             {!selectedThread.isLocked && (
               <div className="bg-white rounded-xl shadow-sm p-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">Leave a Response</h3>
                 <textarea
                   className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[120px] mb-4"
                   placeholder="Share your thoughts..."
+                  value={replyContent}
+                  onChange={(e) => setReplyContent(e.target.value)}
                 />
                 <div className="flex items-center justify-between">
                   <label className="flex items-center space-x-2">
@@ -475,7 +619,10 @@ const CommunityForum = () => {
                     />
                     <span className="text-sm text-gray-600">Post anonymously</span>
                   </label>
-                  <button className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                  <button 
+                    onClick={handleAddReply}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
                     Post Response
                   </button>
                 </div>
@@ -495,20 +642,9 @@ const CommunityForum = () => {
       </main>
 
       {/* Safety Notice */}
-      <footer className="bg-blue-50 border-t border-blue-100 py-4">
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="flex items-start space-x-4">
-            <AlertTriangle className="w-5 h-5 text-blue-600 mt-1" />
-            <div>
-              <h4 className="font-medium text-blue-800 mb-1">Safety Notice</h4>
-              <p className="text-sm text-blue-600">
-                This is a peer support community. If you're experiencing a crisis or need immediate help, 
-                please contact professional mental health services or emergency services.
-              </p>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <div>
+        <GroupSupportFooter/>
+      </div>
     </div>
   );
 };

@@ -1,10 +1,18 @@
-import React from 'react'
-import Home from '@/components/Homepage/Home'
+import React from 'react';
+import Home from '@/components/Homepage/Home';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
-const page = () => {
+export default async function Page() {
+  let session = null;
+
+  try {
+    session = await getServerSession(authOptions);
+  } catch (error) {
+    console.error('Error fetching session:', error);
+  }
+
   return (
-    <Home/>
-  )
+    <Home session={session} />
+  );
 }
-
-export default page

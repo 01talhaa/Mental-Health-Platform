@@ -27,14 +27,34 @@ const StudentSignupForm = () => {
   const handleVerification = async (e) => {
     e.preventDefault();
     setIsVerifying(true);
+    setError('');
 
     try {
       if (!formData.universityEmail.endsWith('.edu')) {
         throw new Error('Please use your university email address');
       }
 
-      // router.push('/dashboard');
-      router.push('/');
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.universityEmail,
+          password: formData.password,
+          studentId: formData.studentId,
+          userType: 'student'
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to register');
+      }
+
+      router.push('/login');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -42,6 +62,7 @@ const StudentSignupForm = () => {
     }
   };
 
+  
   return (
     <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full">
       <h2 className="text-3xl font-bold text-center mb-8 text-gray-800">Student Verification</h2>

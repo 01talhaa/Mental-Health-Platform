@@ -21,6 +21,7 @@ import {
   Lightbulb
 } from 'lucide-react';
 import Header from '../Homepage/Header';
+import Link from 'next/link';
 
 const stats = [
   { value: "250k+", label: "Lives Impacted", sublabel: "Across 50+ Countries", Icon: Heart },
@@ -496,9 +497,11 @@ export default function AboutPage() {
                   <span>Flexible schedule and competitive compensation</span>
                 </li>
               </ul>
-              <button className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-opacity-90 transition-colors">
-                Apply as a Therapist
-              </button>
+              <Link href="/therapist">
+  <button className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-opacity-90 transition-colors">
+    Apply as a Therapist
+  </button>
+</Link>
             </div>
             
             <div className="bg-white bg-opacity-10 p-6 rounded-xl">
@@ -530,4 +533,3 @@ export default function AboutPage() {
 }
 
 
-//AIzaSyD5cDWMauzFNobtxTrgb5rzxnRyppAK65g
