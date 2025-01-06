@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
-import Thread from '@/models/Thread';
+import connectDB from '@/app/lib/mongodb';
+import Thread from '@/app/moduls/Thread';
 
 export async function POST(req, { params }) {
   try {
