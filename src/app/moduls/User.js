@@ -2,10 +2,14 @@ import mongoose from 'mongoose';
 
 const UserSchema = new mongoose.Schema({
   name: String,
-  email: { type: String, unique: true },
-  password: String,
+  email: { type: String, unique: true, required: true },
+  password: { type: String, required: true },
   avatarUrl: String,
-  userType: { type: String, enum: ['regular', 'student', 'anonymous', 'therapist'] },
+  userType: {
+    type: String,
+    enum: ['regular', 'student', 'anonymous', 'therapist'],
+    required: true
+  },
   studentId: String,
   universityEmail: String,
   anonymousCode: String,
@@ -19,4 +23,6 @@ const UserSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-export default mongoose.models.User || mongoose.model('User', UserSchema);
+// Prevent model recompilation during hot reload in development
+const User = mongoose.models.User || mongoose.model('User', UserSchema);
+export default User;
