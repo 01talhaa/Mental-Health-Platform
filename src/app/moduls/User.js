@@ -23,6 +23,20 @@ const UserSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-// Prevent model recompilation during hot reload in development
-const User = mongoose.models.User || mongoose.model('User', UserSchema);
-export default User;
+let User;
+
+async function connectDB() {
+  if (mongoose.connection.readyState !== 1) {
+    await mongoose.connect(process.env.MONGODB_URI);
+  }
+}
+
+async function getUserModel() {
+  if (!User) {
+    await connectDB();
+    User = mongoose.models.User || mongoose.model('User', UserSchema);
+  }
+  return User;
+}
+
+export default getUserModel;

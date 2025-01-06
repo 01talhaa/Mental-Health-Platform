@@ -1,18 +1,17 @@
+// app/page.js
+
+'use client';
+
 import React from 'react';
 import Home from '@/components/Homepage/Home';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { SessionProvider } from './lib/session-provider';
 
-export default async function Page() {
-  let session = null;
-
-  try {
-    session = await getServerSession(authOptions);
-  } catch (error) {
-    console.error('Error fetching session:', error);
-  }
-
+function Page() {
   return (
-    <Home session={session} />
+    <SessionProvider>
+      <Home />
+    </SessionProvider>
   );
 }
+
+export default Page;
