@@ -1,25 +1,29 @@
+// src/app/api/threads/[threadId]/replies/route.js
+
 import { NextResponse } from 'next/server';
 import connectDB from '@/app/lib/mongodb';
-import Thread from '@/app/moduls/Thread';
 
 export async function POST(req, { params }) {
   try {
     await connectDB();
-    const { content, isAnonymous } = await req.json();
+
     const { threadId } = params;
 
-    const thread = await Thread.findById(threadId);
-    if (!thread) throw new Error('Thread not found');
+    if (!threadId) {
+      throw new Error('Thread ID is required');
+    }
 
-    thread.replies.push({
-      content,
-      author: req.user.id,
-      isAnonymous
-    });
+    // Simulate creating a reply
+    const reply = {
+      content: 'Test reply',
+      author: 'Test User',
+      timestamp: Date.now()
+    };
 
-    await thread.save();
-    return NextResponse.json({ reply: thread.replies[thread.replies.length - 1] });
+    // Instead of saving to MongoDB, just return the reply
+    return NextResponse.json(reply);
   } catch (error) {
+    console.error(error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
