@@ -39,3 +39,7 @@ export const SocialButtons = () => {
     </div>
   );
 };
+
+
+//http://localhost:3000/api/auth/callback/google
+//https://mental-health-platform-seven.vercel.app/api/auth/callback/google

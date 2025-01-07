@@ -16,6 +16,7 @@ import {
   BadgeAlert,
   PhoneCall
 } from 'lucide-react';
+import Footer from '../Homepage/Footer';
 
 const emergencyNumbers = [
   { id: 1, name: 'Emergency Services', number: '911', priority: 1 },
@@ -201,6 +202,9 @@ const EmergencyContact = () => {
             ))}
           </div>
         </div>
+      </div>
+      <div>
+        <Footer/>
       </div>
     </div>
   );

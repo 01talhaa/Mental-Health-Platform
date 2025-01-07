@@ -4,6 +4,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Heart, Shield, BookOpen } from 'lucide-react';
 import { useState } from 'react';
+import Link from 'next/link';
 
 const HeroSection = () => {
   const [language, setLanguage] = useState('en');
@@ -129,20 +130,28 @@ const HeroSection = () => {
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row justify-center gap-4">
-              <motion.button
+              <motion.div
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 className="px-8 py-4 bg-blue-600 text-white rounded-full text-lg font-semibold shadow-lg hover:bg-blue-700 transition-colors"
               >
-                {content[language].ctaPrimary}
-              </motion.button>
-              <motion.button
+                <button>
+                  <Link href='/book-therapist'>
+                  {content[language].ctaPrimary}
+                  </Link>
+                </button>
+              </motion.div>
+              <motion.div
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 className="px-8 py-4 bg-white text-blue-600 rounded-full text-lg font-semibold shadow-lg hover:bg-gray-50 transition-colors"
               >
-                {content[language].ctaSecondary}
-              </motion.button>
+                <button>
+                  <Link href="/resources">
+                  {content[language].ctaSecondary}
+                  </Link>
+                </button>
+              </motion.div>
             </div>
           </motion.div>
         </div>

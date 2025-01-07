@@ -102,7 +102,7 @@ const StudentLoginForm = () => {
 
         <p className="text-center text-sm text-gray-600">
           Not registered yet? {' '}
-          <Link href="/student-signup" className="text-indigo-600 hover:text-indigo-800">
+          <Link href="/signup" className="text-indigo-600 hover:text-indigo-800">
             Sign up
           </Link>
         </p>

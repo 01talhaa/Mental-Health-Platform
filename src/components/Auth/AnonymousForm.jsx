@@ -1,6 +1,8 @@
+'use client'
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Copy, Check } from 'lucide-react';
+import { signIn } from 'next-auth/react';
 
 const generateSessionCode = () => {
   return `${Math.random().toString(36).substring(2, 8)}-${Math.random().toString(36).substring(2, 8)}`;
@@ -16,34 +18,68 @@ const AnonymousForm = () => {
 
   const handleAnonymousAccess = async () => {
     setIsLoading(true);
+    setError('');
+
     try {
       const newSessionCode = generateSessionCode();
+      
+      const response = await fetch('/api/auth/anonymous', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          anonymousCode: newSessionCode,
+          userType: 'anonymous'
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create anonymous session');
+      }
+
+      // Store session in localStorage
+      const existingSessions = JSON.parse(localStorage.getItem('anonymousSessions') || '{}');
+      existingSessions[newSessionCode] = {
+        createdAt: new Date().toISOString(),
+        lastAccessed: new Date().toISOString()
+      };
+      localStorage.setItem('anonymousSessions', JSON.stringify(existingSessions));
+      
       setSessionCode(newSessionCode);
       setShowSessionCode(true);
-      
-      // Store in localStorage
-      const storedSessions = JSON.parse(localStorage.getItem('anonymousSessions') || '{}');
-      storedSessions[newSessionCode] = {
-        createdAt: new Date().toISOString(),
-        lastAccess: new Date().toISOString()
-      };
-      localStorage.setItem('anonymousSessions', JSON.stringify(storedSessions));
-      localStorage.setItem('currentAnonymousSession', newSessionCode);
+
+      // Sign in with the anonymous session
+      const signInResult = await signIn('credentials', {
+        redirect: false,
+        anonymousCode: newSessionCode,
+        userType: 'anonymous'
+      });
+
+      if (signInResult?.error) {
+        throw new Error('Failed to authenticate session');
+      }
+
     } catch (err) {
-      setError('Failed to create anonymous session');
-    } finally {
+      setError(err.message);
       setIsLoading(false);
     }
   };
-
+  
   const handleCopyCode = async () => {
     try {
       await navigator.clipboard.writeText(sessionCode);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000); // Reset copied state after 2 seconds
+      setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       setError('Failed to copy code');
     }
+  };
+
+  const handleContinue = () => {
+    router.push('/dashboard');
   };
 
   return (
@@ -73,11 +109,16 @@ const AnonymousForm = () => {
                 <p className="text-sm text-green-600 mt-1">Code copied!</p>
               )}
             </div>
-            <p className="text-sm text-center text-gray-600">
-              Save this code! You'll need it to access your session later.
-            </p>
+            <div className="text-sm text-center space-y-2">
+              <p className="text-gray-600">
+                Save this code! You'll need it to access your session later.
+              </p>
+              <p className="text-gray-500">
+                Note: Anonymous sessions expire after 24 hours of inactivity.
+              </p>
+            </div>
             <button
-              onClick={() => router.push('/dashboard')}
+              onClick={handleContinue}
               className="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition duration-200"
             >
               Continue to Dashboard

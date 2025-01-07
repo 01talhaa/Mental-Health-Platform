@@ -1,5 +1,7 @@
 'use client'
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { getSession } from 'next-auth/react';
 import LoginForm from './Login/Login';
 import StudentLoginForm from './StudentVerification/StudentLoginForm';
 import AnonymousLoginForm from './Login/AnonymousLogin';
@@ -7,6 +9,17 @@ import { SocialButtons } from '../ui/SocialButtons';
 
 const LoginPage = () => {
   const [loginType, setLoginType] = useState('regular');
+  const router = useRouter();
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const session = await getSession();
+      if (session) {
+        router.push('/dashboard');
+      }
+    };
+    checkSession();
+  }, [router]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 flex flex-col items-center justify-center p-4">
@@ -48,9 +61,9 @@ const LoginPage = () => {
       {loginType === 'anonymous' && <AnonymousLoginForm />}
 
       <div className="mt-8 mb-10 w-full max-w-md flex flex-col items-center">
-              <p className="text-gray-600 mb-4">Or sign up with</p>
-              <SocialButtons />
-            </div>
+        <p className="text-gray-600 mb-4">Or sign up with</p>
+        <SocialButtons />
+      </div>
     </div>
   );
 };

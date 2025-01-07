@@ -22,6 +22,7 @@ import {
   Sparkles,
   Shield
 } from 'lucide-react';
+import ResourceFooter from './ResourceFooter';
 
 // Sample data - expanded with more resources
 const categories = [
@@ -499,6 +500,9 @@ const Resources = () => {
           </div>
         </div>
       )}
+      <div>
+        <ResourceFooter/>
+      </div>
     </div>
   );
 };

@@ -1,6 +1,7 @@
 'use client'
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { signIn } from 'next-auth/react';
 import AvatarGenerator from '../AvatarGenerator';
 
 const SignupPage = () => {
@@ -13,21 +14,17 @@ const SignupPage = () => {
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [avatarSeed, setAvatarSeed] = useState('');
 
-  // Update avatar seed when email changes
   const handleEmailChange = (e) => {
     const newEmail = e.target.value;
     setFormData({ ...formData, email: newEmail });
-    if (newEmail.length > 0) {
-      setAvatarSeed(newEmail + Date.now()); // Add timestamp for uniqueness
-    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    
+    setError('');
+
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       setIsLoading(false);
@@ -35,12 +32,42 @@ const SignupPage = () => {
     }
 
     try {
-      // Add your signup logic here
-      setIsLoading(false);
-      // router.push('/dashboard');
-      router.push('/');
+      // Register the user
+      const registerResponse = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          userType: 'regular'
+        }),
+      });
+
+      const registerData = await registerResponse.json();
+
+      if (!registerResponse.ok) {
+        throw new Error(registerData.error || 'Failed to register');
+      }
+
+      // Automatically sign in the user after successful registration
+      const signInResult = await signIn('credentials', {
+        redirect: false,
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (signInResult?.error) {
+        throw new Error('Failed to login automatically');
+      }
+
+      // Redirect to dashboard after successful registration and login
+      router.push('/dashboard');
     } catch (err) {
       setError(err.message);
+    } finally {
       setIsLoading(false);
     }
   };
