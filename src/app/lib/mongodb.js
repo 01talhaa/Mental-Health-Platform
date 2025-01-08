@@ -6,7 +6,6 @@ if (!MONGODB_URI) {
   throw new Error('Please define the MONGODB_URI environment variable');
 }
 
-// Cache the connection to prevent reconnections
 let cached = global.mongoose;
 
 if (!cached) {
@@ -19,11 +18,7 @@ async function connectDB() {
   }
 
   if (!cached.promise) {
-    const options = {
-      useNewUrlParser: true,
-      useUnifiedTopology: true
-    };
-    cached.promise = mongoose.connect(MONGODB_URI, options)
+    cached.promise = mongoose.connect(MONGODB_URI)  // Removed deprecated options
       .then((mongoose) => {
         console.log('MongoDB connected');
         return mongoose;
