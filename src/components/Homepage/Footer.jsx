@@ -28,6 +28,7 @@ const Footer = () => {
             <RiFacebookFill className="text-2xl cursor-pointer hover:text-blue-500" />
             <RiTwitterFill className="text-2xl cursor-pointer hover:text-blue-400" />
             <RiInstagramFill className="text-2xl cursor-pointer hover:text-pink-500" />
+            
             <RiYoutubeFill className="text-2xl cursor-pointer hover:text-red-500" />
           </div>
           <div className="mt-6 text-sm">
