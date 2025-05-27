@@ -18,17 +18,15 @@ async function connectDB() {
   }
 
   if (!cached.promise) {
-    cached.promise = mongoose.connect(MONGODB_URI)  // Removed deprecated options
-      .then((mongoose) => {
-        console.log('MongoDB connected');
-        return mongoose;
-      })
-      .catch((err) => {
-        console.error('MongoDB connection error:', err);
-        throw err;
-      });
-  }
+    const opts = {
+      bufferCommands: false,
+    };
 
+    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
+      return mongoose;
+    });
+  }
+  
   cached.conn = await cached.promise;
   return cached.conn;
 }

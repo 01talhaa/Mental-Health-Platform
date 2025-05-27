@@ -1,26 +1,20 @@
 // lib/getSession.js
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+// import { headers } from "next/headers";
 
-import { unstable_getServerSession } from 'next-auth/next';
-
+// Use this function in Server Components only
 export async function getSession() {
   try {
-    const session = await unstable_getServerSession(
-      { req: {}, res: {} },
-      { 
-        // Your NextAuth options
-        callbacks: {},
-        events: {},
-        jwt: {},
-        pages: {},
-        providers: [],
-        secret: process.env.NEXTAUTH_SECRET,
-        adapter: {}
-      }
-    );
-
+    // Ensure it's called in a request context
+    const session = await getServerSession(authOptions);
     return session;
   } catch (error) {
     console.error('Error fetching session:', error);
     return null;
   }
 }
+
+// For client components, use the useSession hook from next-auth/react:
+// import { useSession } from "next-auth/react";
+// const { data: session } = useSession();
