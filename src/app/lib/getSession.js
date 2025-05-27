@@ -14,7 +14,3 @@ export async function getSession() {
     return null;
   }
 }
-
-// For client components, use the useSession hook from next-auth/react:
-// import { useSession } from "next-auth/react";
-// const { data: session } = useSession();
