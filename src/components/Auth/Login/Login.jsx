@@ -28,26 +28,40 @@ const LoginForm = () => {
     setError('');
 
     try {
-      const result = await signIn('credentials', {
-        redirect: false,
-        email: formData.email,
-        password: formData.password
-      });
-
-      if (result?.error) {
-        // Handle specific error cases
-        switch (result.error) {
-          case 'CredentialsSignin':
-            setError('Invalid email or password');
-            break;
-          default:
-            setError('Failed to login. Please try again.');
-        }
-      } else if (result?.ok) {
-        // Successful login
-        router.refresh(); // Refresh to update session
-        router.replace('/dashboard');
+      // Use custom API for login
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+      if (!baseUrl) {
+        throw new Error('API base URL is not defined. Please set NEXT_PUBLIC_API_BASE_URL in your .env file.');
       }
+      const response = await fetch(`${baseUrl}/api/users/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setError(data.error || 'Invalid email or password');
+        setIsLoading(false);
+        return;
+      }
+      // Store all user details in localStorage for header
+      if (data) {
+        // If response is like { user_id, full_name, email, user_type, token }
+        localStorage.setItem('user', JSON.stringify({
+          user_id: data.user_id,
+          full_name: data.full_name,
+          email: data.email,
+          user_type: data.user_type,
+          token: data.token
+        }));
+      }
+      // Redirect to homepage
+      router.replace('/');
     } catch (err) {
       console.error('Login error:', err);
       setError('An unexpected error occurred. Please try again.');

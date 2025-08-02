@@ -8,9 +8,7 @@ import { SessionProvider } from './lib/session-provider';
 
 function Page() {
   return (
-    <SessionProvider>
       <Home />
-    </SessionProvider>
   );
 }
 

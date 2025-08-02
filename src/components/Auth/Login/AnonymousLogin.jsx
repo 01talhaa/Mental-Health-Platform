@@ -29,41 +29,32 @@ const AnonymousLoginForm = () => {
     setError('');
     
     try {
-      const sessions = JSON.parse(localStorage.getItem('anonymousSessions') || '{}');
-      const sessionData = sessions[sessionCode];
-      
       if (!sessionCode) {
         throw new Error('Please enter your session code');
       }
-
-      if (!sessionData) {
-        throw new Error('Invalid session code');
+      // Call the correct API endpoint for anonymous login
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+      if (!baseUrl) {
+        throw new Error('API base URL is not defined. Please set NEXT_PUBLIC_API_BASE_URL in your .env file.');
       }
-
-      // Check session expiration (24 hours)
-      const lastAccessed = new Date(sessionData.lastAccessed);
-      const now = new Date();
-      const hoursSinceLastAccess = (now - lastAccessed) / (1000 * 60 * 60);
-      
-      if (hoursSinceLastAccess > 24) {
-        throw new Error('Session has expired. Please create a new session.');
-      }
-
-      // Update last accessed time
-      sessions[sessionCode].lastAccessed = now.toISOString();
-      localStorage.setItem('anonymousSessions', JSON.stringify(sessions));
-
-      // Sign in with the anonymous session
-      const result = await signIn('credentials', {
-        redirect: false,
-        anonymousCode: sessionCode,
-        userType: 'anonymous'
+      const response = await fetch(`${baseUrl}/api/users/anonymous`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ anonymous_id: sessionCode }),
       });
-
-      if (result?.error) {
-        throw new Error('Invalid session code');
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Invalid session code');
       }
-
+      // Store all response fields in localStorage for header use
+      localStorage.setItem('user', JSON.stringify({
+        user_id: data.user_id,
+        anonymous_id: data.anonymous_id,
+        user_type: data.user_type,
+        token: data.token
+      }));
       router.push('/dashboard');
     } catch (err) {
       setError(err.message);

@@ -21,47 +21,32 @@ const AnonymousForm = () => {
     setError('');
 
     try {
-      const newSessionCode = generateSessionCode();
-      
-      const response = await fetch('/api/auth/anonymous', {
+      // Call the correct API endpoint with empty body
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+      if (!baseUrl) {
+        throw new Error('API base URL is not defined. Please set NEXT_PUBLIC_API_BASE_URL in your .env file.');
+      }
+      const response = await fetch(`${baseUrl}/api/users/anonymous`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          anonymousCode: newSessionCode,
-          userType: 'anonymous'
-        }),
+        body: JSON.stringify({}),
       });
-
       const data = await response.json();
-
       if (!response.ok) {
         throw new Error(data.error || 'Failed to create anonymous session');
       }
-
-      // Store session in localStorage
-      const existingSessions = JSON.parse(localStorage.getItem('anonymousSessions') || '{}');
-      existingSessions[newSessionCode] = {
-        createdAt: new Date().toISOString(),
-        lastAccessed: new Date().toISOString()
-      };
-      localStorage.setItem('anonymousSessions', JSON.stringify(existingSessions));
-      
-      setSessionCode(newSessionCode);
+      // Store all response fields in localStorage for header use
+      localStorage.setItem('user', JSON.stringify({
+        user_id: data.user_id,
+        anonymous_id: data.anonymous_id,
+        user_type: data.user_type,
+        token: data.token
+      }));
+      setSessionCode(data.anonymous_id);
       setShowSessionCode(true);
-
-      // Sign in with the anonymous session
-      const signInResult = await signIn('credentials', {
-        redirect: false,
-        anonymousCode: newSessionCode,
-        userType: 'anonymous'
-      });
-
-      if (signInResult?.error) {
-        throw new Error('Failed to authenticate session');
-      }
-
+      setIsLoading(false);
     } catch (err) {
       setError(err.message);
       setIsLoading(false);

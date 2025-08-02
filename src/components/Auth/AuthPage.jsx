@@ -20,9 +20,9 @@ const AuthPage = () => {
               : 'bg-white text-gray-600 hover:bg-gray-100'
           }`}
         >
-          Regular Signup
+           Signup
         </button>
-        <button
+        {/* <button
           onClick={() => setAuthType('student')}
           className={`px-6 py-2 rounded-full transition duration-200 ${
             authType === 'student'
@@ -31,7 +31,7 @@ const AuthPage = () => {
           }`}
         >
           Student Signup
-        </button>
+        </button> */}
         <button
           onClick={() => setAuthType('anonymous')}
           className={`px-6 py-2 rounded-full transition duration-200 ${
@@ -46,7 +46,7 @@ const AuthPage = () => {
 
       <div className="w-full max-w-md">
         {authType === 'regular' && <SignupPage />}
-        {authType === 'student' && <StudentSignupForm />}
+        {/* {authType === 'student' && <StudentSignupForm />} */}
         {authType === 'anonymous' && <AnonymousForm />}
       </div>
 

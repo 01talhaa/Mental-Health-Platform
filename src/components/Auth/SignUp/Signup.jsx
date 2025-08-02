@@ -7,7 +7,7 @@ import AvatarGenerator from '../AvatarGenerator';
 const SignupPage = () => {
   const router = useRouter();
   const [formData, setFormData] = useState({
-    name: '',
+    full_name: '',
     email: '',
     password: '',
     confirmPassword: ''
@@ -32,17 +32,23 @@ const SignupPage = () => {
     }
 
     try {
+      // Get base URL from environment variable (client-side)
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+      if (!baseUrl) {
+        throw new Error('API base URL is not defined. Please set NEXT_PUBLIC_API_BASE_URL in your .env file.');
+      }
+
       // Register the user
-      const registerResponse = await fetch('/api/auth/register', {
+      const registerResponse = await fetch(`${baseUrl}/api/users/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: formData.name,
+          full_name: formData.full_name,
           email: formData.email,
           password: formData.password,
-          userType: 'regular'
+          user_type: 'STANDARD'
         }),
       });
 
@@ -60,9 +66,22 @@ const SignupPage = () => {
       });
 
       if (signInResult?.error) {
-        throw new Error('Failed to login automatically');
+        setError('Account created, but login failed. Please check your email and password or try logging in manually.');
+        setIsLoading(false);
+        return;
       }
 
+      // Store all user details in localStorage for header
+      if (registerData) {
+        // If response is like { user_id, full_name, email, user_type, token }
+        localStorage.setItem('user', JSON.stringify({
+          user_id: registerData.user_id,
+          full_name: registerData.full_name,
+          email: registerData.email,
+          user_type: registerData.user_type,
+          token: registerData.token
+        }));
+      }
       // Redirect to dashboard after successful registration and login
       router.push('/dashboard');
     } catch (err) {
@@ -78,7 +97,7 @@ const SignupPage = () => {
       
       <div className="mb-8">
         <AvatarGenerator 
-          name={formData.name || formData.email} 
+          name={formData.full_name || formData.email} 
           size={120}
         />
       </div>
@@ -89,8 +108,8 @@ const SignupPage = () => {
             type="text"
             placeholder="Full Name"
             className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            value={formData.name}
-            onChange={(e) => setFormData({...formData, name: e.target.value})}
+            value={formData.full_name}
+            onChange={(e) => setFormData({...formData, full_name: e.target.value})}
             required
           />
         </div>

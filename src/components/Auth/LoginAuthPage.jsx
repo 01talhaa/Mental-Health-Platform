@@ -34,7 +34,7 @@ const LoginPage = () => {
         >
           Regular Login
         </button>
-        <button
+        {/* <button
           onClick={() => setLoginType('student')}
           className={`px-6 py-2 rounded-full transition duration-200 ${
             loginType === 'student'
@@ -43,7 +43,7 @@ const LoginPage = () => {
           }`}
         >
           Student Login
-        </button>
+        </button> */}
         <button
           onClick={() => setLoginType('anonymous')}
           className={`px-6 py-2 rounded-full transition duration-200 ${
@@ -57,7 +57,7 @@ const LoginPage = () => {
       </div>
 
       {loginType === 'regular' && <LoginForm />}
-      {loginType === 'student' && <StudentLoginForm />}
+      {/* {loginType === 'student' && <StudentLoginForm />} */}
       {loginType === 'anonymous' && <AnonymousLoginForm />}
 
       <div className="mt-8 mb-10 w-full max-w-md flex flex-col items-center">
