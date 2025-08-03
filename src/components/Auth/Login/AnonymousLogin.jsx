@@ -108,7 +108,7 @@ const AnonymousLoginForm = () => {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition duration-200 disabled:opacity-50"
+          className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition duration-200 disabled:opacity-50"
         >
           {isLoading ? 'Verifying...' : 'Continue Anonymously'}
         </button>

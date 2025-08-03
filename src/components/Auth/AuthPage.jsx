@@ -5,22 +5,24 @@ import SignupPage from './SignUp/Signup';
 import StudentSignupForm from './StudentVerification/StudentVerification';
 import AnonymousForm from './AnonymousForm';
 import { SocialButtons } from '../ui/SocialButtons';
+import Header from '../Homepage/Header';
 
 const AuthPage = () => {
   const [authType, setAuthType] = useState('regular');
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 flex flex-col items-center justify-center p-4">
-      <div className="mb-8 flex gap-4">
+    <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4">
+      <Header />
+      <div className="mb-8 flex gap-4 mt-20">
         <button
           onClick={() => setAuthType('regular')}
           className={`px-6 py-2 rounded-full transition duration-200 ${
             authType === 'regular'
-              ? 'bg-indigo-600 text-white'
+              ? 'bg-blue-600 text-white'
               : 'bg-white text-gray-600 hover:bg-gray-100'
           }`}
         >
-           Signup
+          Regular Signup
         </button>
         {/* <button
           onClick={() => setAuthType('student')}
@@ -36,7 +38,7 @@ const AuthPage = () => {
           onClick={() => setAuthType('anonymous')}
           className={`px-6 py-2 rounded-full transition duration-200 ${
             authType === 'anonymous'
-              ? 'bg-indigo-600 text-white'
+              ? 'bg-blue-600 text-white'
               : 'bg-white text-gray-600 hover:bg-gray-100'
           }`}
         >

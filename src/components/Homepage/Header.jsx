@@ -1,117 +1,201 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import React, { useState, useEffect, useRef } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import ProfileMenu from "./ProfileMenu";
-import MobileMenu from "./MobileMenu";
 
+// You can create a new file for the MobileMenu or keep it in the same file if you prefer
+const MobileMenu = ({ navItems, user, onClose }) => {
+  const router = useRouter();
+
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    localStorage.removeItem("refreshToken");
+    onClose();
+    router.push("/login");
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: "100%" }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: "100%" }}
+      transition={{ duration: 0.3, ease: "easeInOut" }}
+      className="fixed inset-0 bg-white z-50 p-8 md:hidden"
+    >
+      <div className="flex justify-between items-center">
+        <span className="text-lg font-bold text-slate-800">Menu</span>
+        <button
+          onClick={onClose}
+          className="p-2 text-slate-500 hover:text-slate-800"
+          aria-label="Close menu"
+        >
+          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+            <path
+              fillRule="evenodd"
+              d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+              clipRule="evenodd"
+            />
+          </svg>
+        </button>
+      </div>
+      <nav className="mt-8 flex flex-col space-y-4">
+        {navItems.map((item) => (
+          <Link
+            key={item.name}
+            href={item.href}
+            onClick={onClose}
+            className="text-2xl font-medium text-slate-700 hover:text-blue-600 transition-colors"
+          >
+            {item.name}
+          </Link>
+        ))}
+      </nav>
+      <div className="mt-10 border-t border-slate-200 pt-6">
+        {user ? (
+          <div className="space-y-4">
+            <p className="font-semibold">{user.full_name}</p>
+            <button
+              onClick={handleLogout}
+              className="w-full text-left text-slate-700 hover:text-red-500"
+            >
+              Logout
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <Link
+              href="/login"
+              onClick={onClose}
+              className="block w-full text-center px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors"
+            >
+              Login
+            </Link>
+            <Link
+              href="/signup"
+              onClick={onClose}
+              className="block w-full text-center px-6 py-3 rounded-lg bg-slate-100 text-slate-700 font-semibold hover:bg-slate-200 transition-colors"
+            >
+              Signup
+            </Link>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+};
+
+// --- Main Header Component ---
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
+
+  const profileMenuRef = useRef(null);
   const router = useRouter();
   const pathname = usePathname();
 
+  // Handle scroll effect
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
-    };
+    const handleScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll);
-    // Function to sync user info from localStorage
-    const syncUserFromLocalStorage = () => {
-      const storedUser = localStorage.getItem('user');
-      let parsedUser = null;
-      if (storedUser) {
-        try {
-          parsedUser = JSON.parse(storedUser);
-        } catch (e) {
-          parsedUser = null;
-          localStorage.removeItem('user');
-        }
-      }
-      if (parsedUser) {
-        setUser(parsedUser);
-        setIsLoggedIn(true);
-      } else {
-        setUser(null);
-        setIsLoggedIn(false);
-      }
-    };
-    syncUserFromLocalStorage();
-    // Listen for localStorage changes (e.g., login/logout in other tabs)
-    window.addEventListener('storage', syncUserFromLocalStorage);
-    // Listen for route changes to re-check localStorage
-    const handleRouteChange = () => {
-      syncUserFromLocalStorage();
-    };
-    router.events?.on?.('routeChangeComplete', handleRouteChange);
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-      window.removeEventListener('storage', syncUserFromLocalStorage);
-      router.events?.off?.('routeChangeComplete', handleRouteChange);
-    };
-  }, [router]);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
-  // Close profile menu when clicking outside
+  // Sync user state from localStorage
+  useEffect(() => {
+    const syncUser = () => {
+      try {
+        const storedUser = localStorage.getItem("user");
+        setUser(storedUser ? JSON.parse(storedUser) : null);
+      } catch (e) {
+        localStorage.removeItem("user");
+        setUser(null);
+      }
+    };
+    syncUser();
+    window.addEventListener("storage", syncUser); // Listen for changes in other tabs
+    return () => window.removeEventListener("storage", syncUser);
+  }, [pathname]); // Re-check on route change
+
+  // Close profile menu on outside click
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (isProfileMenuOpen && !event.target.closest(".profile-menu")) {
+      if (
+        profileMenuRef.current &&
+        !profileMenuRef.current.contains(event.target)
+      ) {
         setIsProfileMenuOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isProfileMenuOpen]);
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    localStorage.removeItem("refreshToken");
+    setUser(null);
+    setIsProfileMenuOpen(false);
+    router.push("/login");
+  };
 
   const navItems = [
-    { name: "Home", href: "/" },
     { name: "About", href: "/about" },
     { name: "Therapists", href: "/therapists" },
-    { name: "Services", href: "/services" },
     { name: "Resources", href: "/resources" },
-    { name: "Support Groups", href: "/groups" },
+    { name: "Groups", href: "/groups" },
     { name: "Contact", href: "/contact" },
   ];
+
+  const getInitials = (name) => {
+    if (!name) return "?";
+    const names = name.split(" ");
+    if (names.length > 1) {
+      return `${names[0][0]}${names[names.length - 1][0]}`;
+    }
+    return name.substring(0, 2);
+  };
 
   return (
     <>
       <motion.header
         className={`fixed top-0 w-full z-40 transition-all duration-300 ${
-          isScrolled ? "bg-white/95 backdrop-blur-sm shadow-md" : "bg-white/50"
+          isScrolled
+            ? "bg-white/90 backdrop-blur-xl border-b border-slate-200 shadow-sm"
+            : "bg-white/50"
         }`}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="flex items-center justify-between h-16 md:h-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-20">
             {/* Logo */}
             <Link href="/" className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold">MH</span>
+                <span className="text-white font-bold">MB</span>
               </div>
               <span className="hidden md:block text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-400">
-                MindfulHealth
+                FeelBetter
               </span>
             </Link>
 
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center space-x-8">
+            <nav className="hidden md:flex items-center space-x-2">
               {navItems.map((item) => (
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`text-gray-600 hover:text-blue-600 transition-colors relative px-3 py-1 ${
-                    pathname === item.href ? "text-blue-600" : ""
+                  className={`text-slate-600 hover:text-slate-900 transition-colors relative px-4 py-2 text-sm font-medium rounded-full ${
+                    pathname === item.href ? "text-slate-900" : ""
                   }`}
                 >
                   {item.name}
                   {pathname === item.href && (
                     <motion.div
-                      layoutId="box"
-                      className="absolute inset-0 border-2 border-blue-600 rounded-md"
+                      layoutId="active-nav-link"
+                      className="absolute inset-0 bg-slate-100 rounded-full z-[-1]"
+                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
                     />
                   )}
                 </Link>
@@ -120,96 +204,89 @@ const Header = () => {
 
             {/* Right Section */}
             <div className="flex items-center space-x-4">
-              {/* If logged in, show user info and logout */}
-              {isLoggedIn && user ? (
-                <>
-                  <div className="relative profile-menu flex items-center space-x-2">
-                    <button
-                      onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-                      className="p-2 text-gray-600 hover:text-blue-600 hover:bg-gray-100 rounded-full transition-colors"
-                      aria-label="Profile"
-                    >
-                      <svg
-                        className="w-5 h-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+              {user ? (
+                <div ref={profileMenuRef} className="relative">
+                  <button
+                    onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                    className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-400 text-white rounded-full font-semibold text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 border-2 border-green-500"
+                  >
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M6 20c0-2.2 3.6-4 6-4s6 1.8 6 4"/></svg>
+                  </button>
+                  <AnimatePresence>
+                    {isProfileMenuOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 10 }}
+                        transition={{ duration: 0.2 }}
+                        className="absolute right-0 top-14 w-60 bg-white shadow-lg rounded-xl p-4 z-50 border border-slate-100"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                        />
-                      </svg>
-                    </button>
-                    <AnimatePresence>
-                      {isProfileMenuOpen && (
-                        <div className="absolute right-0 top-12 bg-white shadow-lg rounded-lg p-4 min-w-[220px] z-50 border border-gray-200">
-                          <div className="mb-2">
-                            <span className="block font-semibold text-blue-600">{user.full_name}</span>
-                            <span className="block text-xs text-gray-500">{user.email}</span>
-                            <span className="block text-xs text-gray-400">Type: {user.user_type}</span>
-                          </div>
+                        <div className="border-b border-slate-200 pb-3 mb-3">
+                          <p className="font-semibold text-slate-800">
+                            {user.full_name}
+                          </p>
+                          <p className="text-xs text-slate-500 truncate">
+                            {user.email}
+                          </p>
+                        </div>
+                        <Link
+                          href="/dashboard"
+                          onClick={() => setIsProfileMenuOpen(false)}
+                          className="block w-full text-left px-3 py-2 rounded-md text-sm text-slate-700 hover:bg-slate-100"
+                        >
+                          My Dashboard
+                        </Link>
+                        <Link
+                          href="/settings"
+                          onClick={() => setIsProfileMenuOpen(false)}
+                          className="block w-full text-left px-3 py-2 rounded-md text-sm text-slate-700 hover:bg-slate-100"
+                        >
+                          Settings
+                        </Link>
+                        <div className="border-t border-slate-200 mt-3 pt-3">
                           <button
-                            onClick={() => {
-                              localStorage.removeItem('user');
-                              localStorage.removeItem('refreshToken');
-                              setUser(null);
-                              setIsLoggedIn(false);
-                              setIsProfileMenuOpen(false);
-                              router.push('/login');
-                            }}
-                            className="w-full px-3 py-2 rounded bg-red-500 text-white text-xs hover:bg-red-600 transition-colors"
+                            onClick={handleLogout}
+                            className="w-full text-left px-3 py-2 rounded-md text-sm text-red-500 hover:bg-red-50"
                           >
                             Logout
                           </button>
                         </div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                </>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               ) : (
-                <>
-                  {/* If not logged in, show login and signup buttons */}
+                // --- Logged Out State ---
+                <div className="hidden md:flex items-center space-x-4">
+                  <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-400 text-white rounded-full font-semibold text-sm border-2 border-red-500">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M6 20c0-2.2 3.6-4 6-4s6 1.8 6 4"/></svg>
+                  </div>
                   <Link
                     href="/login"
-                    className="inline-flex items-center px-6 py-2 rounded-full bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors"
+                    className="text-slate-600 hover:text-slate-900 text-sm font-medium transition-colors"
                   >
                     Login
                   </Link>
                   <Link
                     href="/signup"
-                    className="inline-flex items-center px-6 py-2 rounded-full bg-gray-200 text-blue-600 font-medium hover:bg-gray-300 transition-colors"
+                    className="inline-flex items-center px-4 py-2 rounded-full bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm"
                   >
                     Signup
                   </Link>
-                </>
+                </div>
               )}
-              {/* Get Help Button */}
-              <Link
-                href="/book-therapist"
-                className="hidden md:inline-flex items-center px-6 py-2 rounded-full bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors"
-              >
-                Book Therapist
-              </Link>
+
               {/* Mobile Menu Button */}
               <button
                 onClick={() => setIsMobileMenuOpen(true)}
-                className="md:hidden p-2 text-gray-600 hover:text-blue-600 hover:bg-gray-100 rounded-full transition-colors"
-                aria-label="Menu"
+                className="md:hidden p-2 text-slate-600 hover:text-slate-900 rounded-full transition-colors"
+                aria-label="Open menu"
               >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
+                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                   <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 6h16M4 12h16M4 18h16"
+                    fillRule="evenodd"
+                    d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
+                    clipRule="evenodd"
                   />
                 </svg>
               </button>
@@ -218,8 +295,16 @@ const Header = () => {
         </div>
       </motion.header>
 
-      {/* Mobile Menu */}
-      <AnimatePresence>{isMobileMenuOpen && <MobileMenu navItems={navItems || []}/>}</AnimatePresence>
+      {/* Mobile Menu Component */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <MobileMenu
+            navItems={navItems}
+            user={user}
+            onClose={() => setIsMobileMenuOpen(false)}
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 };

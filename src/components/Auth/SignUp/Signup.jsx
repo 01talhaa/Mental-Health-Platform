@@ -65,25 +65,20 @@ const SignupPage = () => {
         password: formData.password,
       });
 
-      if (signInResult?.error) {
-        setError('Account created, but login failed. Please check your email and password or try logging in manually.');
-        setIsLoading(false);
-        return;
-      }
 
       // Store all user details in localStorage for header
       if (registerData) {
-        // If response is like { user_id, full_name, email, user_type, token }
+        // Ensure user_id and full_name are present and fallback to formData if missing
         localStorage.setItem('user', JSON.stringify({
-          user_id: registerData.user_id,
-          full_name: registerData.full_name,
-          email: registerData.email,
-          user_type: registerData.user_type,
-          token: registerData.token
+          user_id: registerData.user_id || registerData._id || '',
+          full_name: registerData.full_name || formData.full_name,
+          email: registerData.email || formData.email,
+          user_type: registerData.user_type || 'STANDARD',
+          token: registerData.token || ''
         }));
       }
-      // Redirect to dashboard after successful registration and login
-      router.push('/dashboard');
+      // Redirect to homepage after successful registration (regardless of login result)
+      router.push('/');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -153,7 +148,7 @@ const SignupPage = () => {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition duration-200 disabled:opacity-50"
+          className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition duration-200 disabled:opacity-50"
         >
           {isLoading ? 'Creating Account...' : 'Sign Up'}
         </button>

@@ -6,6 +6,7 @@ import LoginForm from './Login/Login';
 import StudentLoginForm from './StudentVerification/StudentLoginForm';
 import AnonymousLoginForm from './Login/AnonymousLogin';
 import { SocialButtons } from '../ui/SocialButtons';
+import Header from '../Homepage/Header';
 
 const LoginPage = () => {
   const [loginType, setLoginType] = useState('regular');
@@ -22,13 +23,14 @@ const LoginPage = () => {
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 flex flex-col items-center justify-center p-4">
-      <div className="mb-8 flex gap-4">
+    <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4">
+      <Header />
+      <div className="mb-8 flex gap-4 mt-20">
         <button
           onClick={() => setLoginType('regular')}
           className={`px-6 py-2 rounded-full transition duration-200 ${
             loginType === 'regular'
-              ? 'bg-indigo-600 text-white'
+              ? 'bg-blue-600 text-white'
               : 'bg-white text-gray-600 hover:bg-gray-100'
           }`}
         >
@@ -48,7 +50,7 @@ const LoginPage = () => {
           onClick={() => setLoginType('anonymous')}
           className={`px-6 py-2 rounded-full transition duration-200 ${
             loginType === 'anonymous'
-              ? 'bg-indigo-600 text-white'
+              ? 'bg-blue-600 text-white'
               : 'bg-white text-gray-600 hover:bg-gray-100'
           }`}
         >
