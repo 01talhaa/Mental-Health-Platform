@@ -1,9 +1,4 @@
 {
-    "functions": {
-      "api/auth/*": {
-        "maxDuration": 30
-      }
-    },
     "headers": [
       {
         "source": "/api/(.*)",
