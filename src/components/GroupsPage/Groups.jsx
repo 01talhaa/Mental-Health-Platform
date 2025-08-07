@@ -115,6 +115,9 @@ const responses = [
   }
 ];
 
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+
 const CommunityForum = () => {
   const [activeView, setActiveView] = useState('categories');
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -127,33 +130,94 @@ const CommunityForum = () => {
   const [replyContent, setReplyContent] = useState('');
   const [editorContent, setEditorContent] = useState('');
   const [error, setError] = useState(null);
+  // Support group state
+  const [showNewGroupForm, setShowNewGroupForm] = useState(false);
+  const [groupForm, setGroupForm] = useState({ group_name: '', description: '', is_private: false });
+  const [groups, setGroups] = useState([]);
+  const [groupLoading, setGroupLoading] = useState(false);
+  const [groupError, setGroupError] = useState(null);
+  const [groupSuccess, setGroupSuccess] = useState(null);
 
   const { isLoading, error: threadError, createThread, getThreads, addReply, likeThread } = useThread();
   const { isAuthenticated, user } = useAuth();
 
-  const handleCreateThread = async (e) => {
-    e.preventDefault();
-    if (!isAuthenticated) {
-      setError('Please log in to create a thread');
-      return;
-    }
+  // Fetch support groups on mount
+  React.useEffect(() => {
+    fetchGroups();
+  }, []);
 
+  const fetchGroups = async () => {
+    setGroupLoading(true);
+    setGroupError(null);
     try {
-      const thread = await createThread({
-        title: formData.title,
-        content: editorContent,
-        category: selectedCategory.id,
-        isAnonymous
-      });
-      setShowNewThreadForm(false);
-      setSelectedThread(thread);
-      setActiveView('thread');
-      setFormData({ title: '' });
-      setEditorContent('');
+      const res = await fetch(`${API_BASE_URL}/api/support-groups/`);
+      if (!res.ok) throw new Error('Failed to fetch groups');
+      const data = await res.json();
+      setGroups(data);
     } catch (err) {
-      setError(err.message);
+      setGroupError(err.message);
+    } finally {
+      setGroupLoading(false);
     }
   };
+
+  const handleCreateGroup = async (e) => {
+    e.preventDefault();
+    setGroupError(null);
+    setGroupSuccess(null);
+
+    // Get user_id from localStorage (like TherapistApplicationForm)
+    let userId = user?.user_id || user?.id || user?._id;
+    if (!userId && typeof window !== 'undefined') {
+      let userObj = {};
+      try {
+        userObj = JSON.parse(localStorage.getItem('user') || '{}');
+      } catch {
+        userObj = {};
+      }
+      userId = userObj.user_id || userObj._id || userObj.id || '';
+      if (!userId) {
+        // Try to get user_id from sessionStorage as a fallback
+        try {
+          const sessionUser = JSON.parse(sessionStorage.getItem('user') || '{}');
+          userId = sessionUser.user_id || sessionUser._id || sessionUser.id || '';
+        } catch {}
+      }
+    }
+    if (typeof window !== 'undefined') {
+      console.log('[Groups.jsx] userId for group creation:', userId);
+    }
+    if (!userId) {
+      setGroupError('Please log in to create a group');
+      return;
+    }
+    if (!groupForm.group_name || !groupForm.description) {
+      setGroupError('Group name and description are required');
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/support-groups/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          group_name: groupForm.group_name,
+          user_id: userId,
+          description: groupForm.description,
+          is_private: groupForm.is_private
+        })
+      });
+      if (!res.ok) throw new Error('Failed to create group');
+      const data = await res.json();
+      setGroupSuccess('Group created successfully!');
+      setShowNewGroupForm(false);
+      setGroupForm({ group_name: '', description: '', is_private: false });
+      fetchGroups();
+    } catch (err) {
+      setGroupError(err.message);
+    }
+  };
+
+  // ...existing code...
 
   const handleAddReply = async () => {
     if (!isAuthenticated) {
@@ -431,7 +495,112 @@ const CommunityForum = () => {
             {error}
           </div>
         )}
+        {/* Support Groups Section */}
+        <div className="mb-10">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold text-gray-800">Support Groups</h2>
+            <button
+              onClick={() => setShowNewGroupForm(true)}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center"
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              New Group
+            </button>
+          </div>
+          {groupError && (
+            <div className="bg-red-50 text-red-600 p-2 rounded mb-2">{groupError}</div>
+          )}
+          {groupSuccess && (
+            <div className="bg-green-50 text-green-700 p-2 rounded mb-2">{groupSuccess}</div>
+          )}
+          {groupLoading ? (
+            <div>Loading groups...</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {groups.length === 0 ? (
+                <div className="col-span-full text-gray-500">No groups found.</div>
+              ) : (
+                groups.map((group) => (
+                  <div
+                    key={group.group_id || group.id}
+                    className="bg-white rounded-xl shadow p-4 flex flex-col cursor-pointer hover:bg-blue-50 transition"
+                    onClick={() => {
+                      const id = group.group_id || group.id;
+                      window.location.href = `/groups/${id}`;
+                    }}
+                  >
+                    <h3 className="text-lg font-semibold text-gray-800 mb-1">{group.group_name}</h3>
+                    <p className="text-gray-600 mb-2">{group.description}</p>
+                    <div className="flex items-center text-xs text-gray-400">
+                      <span>{group.is_private ? 'Private' : 'Public'}</span>
+                      {group.created_at && (
+                        <span className="ml-2">{new Date(group.created_at).toLocaleDateString()}</span>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
 
+        {/* New Group Form Modal */}
+        {showNewGroupForm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-6">
+              <h3 className="text-xl font-semibold text-gray-800 mb-4">Create New Support Group</h3>
+              <form onSubmit={handleCreateGroup} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Group Name</label>
+                  <input
+                    type="text"
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    placeholder="Enter group name..."
+                    value={groupForm.group_name}
+                    onChange={e => setGroupForm(f => ({ ...f, group_name: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                  <textarea
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 min-h-[100px]"
+                    placeholder="Describe the group..."
+                    value={groupForm.description}
+                    onChange={e => setGroupForm(f => ({ ...f, description: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={groupForm.is_private}
+                    onChange={e => setGroupForm(f => ({ ...f, is_private: e.target.checked }))}
+                    className="rounded text-green-600 focus:ring-green-500"
+                  />
+                  <span className="text-sm text-gray-600">Private group</span>
+                </div>
+                <div className="flex justify-end space-x-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowNewGroupForm(false)}
+                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    Create Group
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ...existing code... */}
         {/* Search and Controls */}
         <div className="flex items-center justify-between mb-8">
           <div className="relative flex-1 max-w-lg">
@@ -455,190 +624,7 @@ const CommunityForum = () => {
           </div>
         </div>
 
-        {/* Content Views */}
-        {activeView === 'categories' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {categories.map((category) => (
-              <CategoryCard key={category.id} category={category} />
-            ))}
-          </div>
-        )}
-
-        {activeView === 'threadList' && (
-          <div className="space-y-6">
-            <div className="bg-white rounded-xl p-6 mb-6">
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                {selectedCategory.name}
-              </h2>
-              <p className="text-gray-600">{selectedCategory.description}</p>
-            </div>
-
-            <div className="space-y-4">
-              {threads
-                .filter(thread => thread.category === selectedCategory.id)
-                .map((thread) => (
-                  <ThreadCard key={thread.id} thread={thread} />
-                ))}
-            </div>
-          </div>
-        )}
-
-        {activeView === 'thread' && selectedThread && (
-          <div className="space-y-6">
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                {selectedThread.title}
-              </h2>
-              <div className="flex items-center space-x-4 mb-4">
-                <div className="flex items-center space-x-2">
-                  {selectedThread.author.isAnonymous ? (
-                    <EyeOff className="w-4 h-4 text-gray-400" />
-                  ) : (
-                    <>
-                      {selectedThread.author.isModerator && (
-                        <Shield className="w-4 h-4 text-blue-500" />
-                      )}
-                    </>
-                  )}
-                  <span className="text-gray-600">
-                    {selectedThread.author.name}
-                  </span>
-                </div>
-                <span className="text-gray-500">
-                  {new Date(selectedThread.timestamp).toLocaleDateString()}
-                </span>
-              </div>
-              <p className="text-gray-700 mb-6">{selectedThread.content}</p>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <button 
-                    onClick={() => handleLike(selectedThread.id)}
-                    className="flex items-center space-x-1 text-gray-500 hover:text-blue-600"
-                  >
-                    <ThumbsUp className="w-5 h-5" />
-                    <span>{selectedThread.likes}</span>
-                  </button>
-                  <button className="flex items-center space-x-1 text-gray-500 hover:text-blue-600">
-                    <MessageSquare className="w-5 h-5" />
-                    <span>{selectedThread.replies}</span>
-                  </button>
-                  <button className="flex items-center space-x-1 text-gray-500 hover:text-blue-600">
-                    <Eye className="w-5 h-5" />
-                    <span>{selectedThread.views}</span>
-                  </button>
-                </div>
-                <div className="flex items-center space-x-4">
-                  <button 
-                    onClick={() => handleShare(selectedThread.id)}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <Share2 className="w-5 h-5" />
-                  </button>
-                  <button 
-                    onClick={() => handleReport(selectedThread.id)}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <Flag className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              {responses
-                .filter(response => response.threadId === selectedThread.id)
-                .map((response) => (
-                  <div key={response.id} className="bg-white rounded-xl shadow-sm p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center space-x-2">
-                        {response.author.isAnonymous ? (
-                          <EyeOff className="w-4 h-4 text-gray-400" />
-                        ) : (
-                          <>
-                            {response.author.isModerator && (
-                              <Shield className="w-4 h-4 text-blue-500" />
-                            )}
-                          </>
-                        )}
-                        <span className="text-gray-600">{response.author.name}</span>
-                        <span className="text-gray-500">
-                          {new Date(response.timestamp).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <button 
-                        onClick={() => handleReport(response.id)}
-                        className="text-gray-400 hover:text-gray-600"
-                      >
-                        <MoreVertical className="w-5 h-5" />
-                      </button>
-                    </div>
-                    <p className="text-gray-700 mb-4">{response.content}</p>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        <button 
-                          onClick={() => handleLike(response.id)}
-                          className="flex items-center space-x-1 text-gray-500 hover:text-blue-600"
-                        >
-                          <ThumbsUp className="w-5 h-5" />
-                          <span>{response.likes}</span>
-                        </button>
-                        {response.isHelpful && (
-                          <span className="text-green-600 text-sm flex items-center">
-                            <Shield className="w-4 h-4 mr-1" />
-                            Helpful Response
-                          </span>
-                        )}
-                      </div>
-                      <button 
-                        onClick={() => handleReport(response.id)}
-                        className="text-gray-400 hover:text-gray-600"
-                      >
-                        <Flag className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-            </div>
-
-            {!selectedThread.isLocked && (
-              <div className="bg-white rounded-xl shadow-sm p-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Leave a Response</h3>
-                <textarea
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[120px] mb-4"
-                  placeholder="Share your thoughts..."
-                  value={replyContent}
-                  onChange={(e) => setReplyContent(e.target.value)}
-                />
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={isAnonymous}
-                      onChange={(e) => setIsAnonymous(e.target.checked)}
-                      className="rounded text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-gray-600">Post anonymously</span>
-                  </label>
-                  <button 
-                    onClick={handleAddReply}
-                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Post Response
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* New Thread Form Modal */}
-        {showNewThreadForm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="max-w-2xl w-full">
-              <NewThreadForm />
-            </div>
-          </div>
-        )}
+        {/* ...existing code... */}
       </main>
 
       {/* Safety Notice */}

@@ -173,7 +173,7 @@ const Header = () => {
             {/* Logo */}
             <Link href="/" className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold">MB</span>
+                <span className="text-white font-bold">FB</span>
               </div>
               <span className="hidden md:block text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-400">
                 FeelBetter
