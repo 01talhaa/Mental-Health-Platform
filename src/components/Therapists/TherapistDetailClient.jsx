@@ -1,15 +1,7 @@
 "use client";
-import React,
-{
-  useEffect,
-  useState
-}
-from "react";
-import {
-  useRouter,
-  useSearchParams
-}
-from "next/navigation";
+
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Header from "@/components/Homepage/Header";
 
 const TherapistDetailClient = () => {
@@ -19,16 +11,17 @@ const TherapistDetailClient = () => {
   const [therapist, setTherapist] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [showBooking, setShowBooking] = useState(false);
+  const [existingAppointments, setExistingAppointments] = useState([]);
+  const [appointmentsLoading, setAppointmentsLoading] = useState(false);
+  
+  // Booking states
+  const [showBookingModal, setShowBookingModal] = useState(false);
   const [appointmentTime, setAppointmentTime] = useState("");
   const [duration, setDuration] = useState(60);
   const [meetingLink, setMeetingLink] = useState("");
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingError, setBookingError] = useState("");
   const [bookingSuccess, setBookingSuccess] = useState("");
-  const [appointments, setAppointments] = useState([]);
-  const [appointmentsLoading, setAppointmentsLoading] = useState(false);
-  const [appointmentsError, setAppointmentsError] = useState("");
 
   useEffect(() => {
     if (!userId) return;
@@ -55,6 +48,9 @@ const TherapistDetailClient = () => {
         }
         const data = await response.json();
         setTherapist(data);
+        
+        // Fetch existing appointments for this therapist
+        await fetchExistingAppointments(data.therapist_id, baseUrl);
       } catch (err) {
         setError(err.message || "Unknown error");
         setTherapist(null);
@@ -65,42 +61,145 @@ const TherapistDetailClient = () => {
     fetchTherapist();
   }, [userId]);
 
-  // Fetch therapist appointments
-  useEffect(() => {
-    // Only fetch appointments if therapist is loaded and has an id
-    if (!therapist || !therapist.therapist_id) return;
-    const fetchAppointments = async () => {
-      setAppointmentsLoading(true);
-      setAppointmentsError("");
-      try {
-        let baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-        if (
-          typeof window !== "undefined" &&
-          !baseUrl &&
-          window.env &&
-          window.env.NEXT_PUBLIC_API_BASE_URL
-        ) {
-          baseUrl = window.env.NEXT_PUBLIC_API_BASE_URL;
-        }
-        if (!baseUrl) throw new Error("API base URL not set");
-        const response = await fetch(
-          `${baseUrl}/api/appointments/therapist/${therapist.therapist_id}`
-        );
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(errorText || "Failed to fetch appointments");
-        }
-        const data = await response.json();
-        setAppointments(Array.isArray(data) ? data : []);
-      } catch (err) {
-        setAppointmentsError(err.message || "Unknown error");
-        setAppointments([]);
-      } finally {
-        setAppointmentsLoading(false);
+  const fetchExistingAppointments = async (therapistId, baseUrl) => {
+    setAppointmentsLoading(true);
+    try {
+      const response = await fetch(`${baseUrl}/api/appointments/therapist/${therapistId}`);
+      if (response.ok) {
+        const appointments = await response.json();
+        setExistingAppointments(appointments);
       }
-    };
-    fetchAppointments();
-  }, [therapist]);
+    } catch (err) {
+      console.error('Failed to fetch appointments:', err);
+    } finally {
+      setAppointmentsLoading(false);
+    }
+  };
+
+  // Get minimum date (today) in YYYY-MM-DDTHH:MM format for datetime-local input
+  const getMinDateTime = () => {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    return now.toISOString().slice(0, 16);
+  };
+
+  // Check if a time slot conflicts with existing appointments
+  const isTimeSlotBooked = (selectedDateTime, selectedDuration) => {
+    if (!selectedDateTime || !existingAppointments.length) return false;
+
+    const selectedStart = new Date(selectedDateTime);
+    const selectedEnd = new Date(selectedStart.getTime() + selectedDuration * 60000);
+
+    return existingAppointments.some(appointment => {
+      const appointmentStart = new Date(appointment.appointment_time);
+      const appointmentEnd = new Date(appointmentStart.getTime() + appointment.duration_minutes * 60000);
+
+      // Check if there's any overlap
+      return (selectedStart < appointmentEnd && selectedEnd > appointmentStart);
+    });
+  };
+
+  // Get conflicting appointment details
+  const getConflictingAppointment = (selectedDateTime, selectedDuration) => {
+    if (!selectedDateTime || !existingAppointments.length) return null;
+
+    const selectedStart = new Date(selectedDateTime);
+    const selectedEnd = new Date(selectedStart.getTime() + selectedDuration * 60000);
+
+    return existingAppointments.find(appointment => {
+      const appointmentStart = new Date(appointment.appointment_time);
+      const appointmentEnd = new Date(appointmentStart.getTime() + appointment.duration_minutes * 60000);
+
+      return (selectedStart < appointmentEnd && selectedEnd > appointmentStart);
+    });
+  };
+
+  const handleBookAppointment = async (e) => {
+    e.preventDefault();
+    setBookingLoading(true);
+    setBookingError("");
+    setBookingSuccess("");
+
+    try {
+      // Check for time slot conflicts
+      if (isTimeSlotBooked(appointmentTime, duration)) {
+        const conflictingAppointment = getConflictingAppointment(appointmentTime, duration);
+        const conflictDate = new Date(conflictingAppointment.appointment_time);
+        const conflictEndTime = new Date(conflictDate.getTime() + conflictingAppointment.duration_minutes * 60000);
+        
+        throw new Error(
+          `This time slot conflicts with an existing appointment (${conflictDate.toLocaleDateString()} ${conflictDate.toLocaleTimeString()} - ${conflictEndTime.toLocaleTimeString()}). Please choose a different time.`
+        );
+      }
+
+      // Get user data from localStorage
+      const userData = JSON.parse(localStorage.getItem('user'));
+      if (!userData) {
+        throw new Error("Please log in to book an appointment");
+      }
+
+      const userId = userData.user_id || userData.id;
+      const token = userData.token || userData.refreshToken || userData.refresh_token;
+
+      if (!userId || !token) {
+        throw new Error("Authentication required");
+      }
+
+      let baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+      if (
+        typeof window !== "undefined" &&
+        !baseUrl &&
+        window.env &&
+        window.env.NEXT_PUBLIC_API_BASE_URL
+      ) {
+        baseUrl = window.env.NEXT_PUBLIC_API_BASE_URL;
+      }
+
+      if (!baseUrl) throw new Error("API base URL not set");
+
+      // Format datetime for API (convert to YYYY-MM-DD HH:MM:SS format)
+      const formattedDateTime = appointmentTime.replace('T', ' ') + ':00';
+
+      const response = await fetch(`${baseUrl}/api/appointments/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          therapist_id: therapist.therapist_id,
+          user_id: userId,
+          appointment_time: formattedDateTime,
+          duration_minutes: Number(duration),
+          meeting_link: meetingLink
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to book appointment");
+      }
+
+      setBookingSuccess("Appointment booked successfully!");
+      setAppointmentTime("");
+      setDuration(60);
+      setMeetingLink("");
+      
+      // Refresh existing appointments
+      await fetchExistingAppointments(therapist.therapist_id, baseUrl);
+      
+      // Close modal after 2 seconds
+      setTimeout(() => {
+        setShowBookingModal(false);
+        setBookingSuccess("");
+      }, 2000);
+
+    } catch (err) {
+      setBookingError(err.message || "Failed to book appointment");
+    } finally {
+      setBookingLoading(false);
+    }
+  };
 
   if (!userId) {
     return (
@@ -110,36 +209,7 @@ const TherapistDetailClient = () => {
     );
   }
 
-  const Toast = ({
-    message,
-    onClose
-  }) => (
-    <div className="fixed top-8 right-8 z-[9999]">
-      <div className="bg-slate-800 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-slide-in">
-        <svg
-          width="24"
-          height="24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="text-white"
-        >
-          <path d="M9 12l2 2 4-4" />
-          <circle cx="12" cy="12" r="10" />
-        </svg>
-        <span className="font-semibold">{message}</span>
-        <button
-          className="ml-4 text-white hover:text-slate-200 text-lg"
-          onClick={onClose}
-        >
-          ×
-        </button>
-      </div>
-      <style>{`.animate-slide-in { animation: slide-in 0.4s cubic-bezier(.4,0,.2,1); } @keyframes slide-in { from { opacity:0; transform:translateY(-20px);} to { opacity:1; transform:translateY(0);} }`}</style>
-    </div>
-  );
+
 
   return (
     <div className="min-h-screen bg-slate-50 py-16 px-4">
@@ -173,9 +243,9 @@ const TherapistDetailClient = () => {
             {error}
           </div>
         ) : therapist ? (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-            {/* Left Column: Therapist Details */}
-            <div className="lg:col-span-2 bg-white rounded-2xl shadow-lg p-8">
+          <div className="max-w-4xl">
+            {/* Therapist Details - Single Column Layout */}
+            <div className="bg-white rounded-2xl shadow-lg p-8">
               <div className="flex flex-col sm:flex-row items-center sm:items-start gap-8">
                 <div className="w-40 h-40 rounded-full overflow-hidden shadow-md flex-shrink-0">
                   {therapist.profile_picture_url ? (
@@ -235,6 +305,29 @@ const TherapistDetailClient = () => {
                   {therapist.bio}
                 </p>
               </div>
+              
+              {/* Book Appointment Button */}
+              <div className="mt-8 pt-6 border-t border-slate-200">
+                <button
+                  onClick={() => setShowBookingModal(true)}
+                  className="w-full sm:w-auto px-8 py-3 bg-blue-600 text-white rounded-lg shadow-lg hover:bg-blue-700 transition-colors font-semibold text-lg flex items-center justify-center gap-2"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                  Book Appointment
+                </button>
+              </div>
               <div className="mt-8 border-t border-slate-200 pt-6">
                 <h3 className="text-xl font-bold text-slate-800 mb-4">
                   Details & Verification
@@ -278,252 +371,175 @@ const TherapistDetailClient = () => {
                 </div>
               </div>
             </div>
+          </div>
+        ) : null}
+      </div>
 
-            {/* Right Column: Booking and Appointments */}
-            <div className="lg:col-span-1 space-y-6">
-              <div className="bg-white rounded-2xl shadow-lg p-6 text-center">
-                <h3 className="text-lg font-semibold text-slate-800">
-                  Ready to talk?
-                </h3>
-                <p className="text-sm text-slate-500 mt-1">
-                  Schedule your session now
+      {/* Booking Modal */}
+      {showBookingModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md relative animate-fade-in-up">
+            <button
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-2xl font-bold"
+              onClick={() => {
+                setShowBookingModal(false);
+                setBookingError("");
+                setBookingSuccess("");
+              }}
+              aria-label="Close"
+            >
+              ×
+            </button>
+            
+            <h2 className="text-2xl font-bold mb-6 text-slate-800 text-center">
+              Book an Appointment
+            </h2>
+            
+            <div className="mb-4 p-4 bg-slate-50 rounded-lg">
+              <p className="text-sm text-slate-600">
+                <span className="font-semibold">Therapist:</span> {therapist.full_name}
+              </p>
+              <p className="text-sm text-slate-600">
+                <span className="font-semibold">Specialization:</span> {therapist.specialization}
+              </p>
+              {appointmentsLoading ? (
+                <p className="text-xs text-slate-500 mt-2">
+                  Loading existing appointments...
                 </p>
-                <button
-                  className="mt-4 w-full px-6 py-3 bg-mint-500 text-white rounded-lg shadow-md hover:bg-mint-600 transition font-bold text-lg"
-                  onClick={() => setShowBooking(true)}
-                >
-                  Book This Therapist
-                </button>
-              </div>
+              ) : (
+                <p className="text-xs text-slate-500 mt-2">
+                  {existingAppointments.length} existing appointments found
+                </p>
+              )}
+            </div>
 
-              <div className="bg-white rounded-2xl shadow-lg p-6">
-                <h3 className="text-xl font-bold text-slate-800 mb-4 text-center">
-                  Upcoming Appointments
-                </h3>
-                {appointmentsLoading ? (
-                  <div className="text-center text-slate-500 animate-pulse">
-                    Loading appointments...
-                  </div>
-                ) : appointmentsError ? (
-                  <div className="text-center text-red-500 bg-red-50 p-4 rounded-lg">
-                    {appointmentsError}
-                  </div>
-                ) : appointments.length === 0 ? (
-                  <div className="text-center text-slate-400 py-8">
-                    <svg
-                      className="w-12 h-12 mx-auto text-slate-300"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                      ></path>
-                    </svg>
-                    <p className="mt-2 text-sm">No appointments found.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-                    {appointments.map((app) => (
-                      <div
-                        key={app.appointment_id}
-                        className="bg-slate-50 border border-slate-200 rounded-xl p-4 transition-all hover:shadow-md"
-                      >
-                        <p className="font-bold text-slate-700">
-                          {app.client_name || "Client"}
-                        </p>
-                        <p className="text-sm text-slate-500">
-                          {new Date(app.appointment_time).toLocaleString()}
-                        </p>
-                        <div className="mt-2 flex items-center justify-between text-sm">
-                          <span className="text-slate-500">
-                            {app.duration_minutes} min
-                          </span>
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                              app.status === "completed"
-                                ? "bg-green-100 text-green-700"
-                                : "bg-blue-100 text-blue-700"
-                            }`}
-                          >
-                            {app.status}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+            {bookingError && (
+              <div className="text-red-600 bg-red-50 p-3 rounded-lg mb-4 text-center text-sm">
+                {bookingError}
+              </div>
+            )}
+            
+            {bookingSuccess && (
+              <div className="text-green-600 bg-green-50 p-3 rounded-lg mb-4 text-center text-sm">
+                {bookingSuccess}
+              </div>
+            )}
+
+            <form onSubmit={handleBookAppointment} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Date & Time
+                </label>
+                <input
+                  type="datetime-local"
+                  value={appointmentTime}
+                  onChange={(e) => setAppointmentTime(e.target.value)}
+                  className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:border-transparent ${
+                    appointmentTime && isTimeSlotBooked(appointmentTime, duration)
+                      ? 'border-red-500 focus:ring-red-500 bg-red-50'
+                      : 'border-slate-300 focus:ring-blue-500'
+                  }`}
+                  required
+                  min={getMinDateTime()}
+                />
+                {appointmentTime && isTimeSlotBooked(appointmentTime, duration) && (
+                  <div className="mt-1 text-sm text-red-600 bg-red-50 p-2 rounded border border-red-200">
+                    ⚠️ This time slot is already booked. Please choose a different time.
+                    {(() => {
+                      const conflict = getConflictingAppointment(appointmentTime, duration);
+                      if (conflict) {
+                        const startTime = new Date(conflict.appointment_time);
+                        const endTime = new Date(startTime.getTime() + conflict.duration_minutes * 60000);
+                        return (
+                          <div className="text-xs mt-1 text-slate-600">
+                            Existing appointment: {startTime.toLocaleDateString()} {startTime.toLocaleTimeString()} - {endTime.toLocaleTimeString()}
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
                 )}
               </div>
-            </div>
-          </div>
-        ) : null}
 
-        {/* Booking Modal */}
-        {showBooking && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md relative animate-fade-in-up">
-              <button
-                className="absolute top-4 right-4 text-slate-400 hover:text-red-500 text-3xl"
-                onClick={() => {
-                  setShowBooking(false);
-                  setBookingError("");
-                  setBookingSuccess("");
-                }}
-                aria-label="Close"
-              >
-                ×
-              </button>
-              <h2 className="text-2xl font-bold mb-6 text-slate-800 text-center">
-                Book an Appointment
-              </h2>
-              {bookingError && (
-                <div className="text-red-500 bg-red-50 p-3 rounded-lg mb-4 text-center">
-                  {bookingError}
-                </div>
-              )}
-              {bookingSuccess && (
-                <div className="text-green-600 bg-green-50 p-3 rounded-lg mb-4 text-center">
-                  {bookingSuccess}
-                </div>
-              )}
-              <form
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  setBookingLoading(true);
-                  setBookingError("");
-                  setBookingSuccess("");
-                  let userId = null;
-                  if (typeof window !== "undefined") {
-                    try {
-                      const user = JSON.parse(localStorage.getItem("user"));
-                      userId = user?.user_id || user?.id || null;
-                    } catch {}
-                  }
-                  if (!userId) {
-                    setBookingError("User not logged in.");
-                    setBookingLoading(false);
-                    return;
-                  }
-                  if (!appointmentTime || !duration || !meetingLink) {
-                    setBookingError("Please fill all fields.");
-                    setBookingLoading(false);
-                    return;
-                  }
-                  let baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-                  if (
-                    typeof window !== "undefined" &&
-                    !baseUrl &&
-                    window.env &&
-                    window.env.NEXT_PUBLIC_API_BASE_URL
-                  ) {
-                    baseUrl = window.env.NEXT_PUBLIC_API_BASE_URL;
-                  }
-                  try {
-                    const res = await fetch(`${baseUrl}/api/appointments/`, {
-                      method: "POST",
-                      headers: {
-                        "Content-Type": "application/json"
-                      },
-                      body: JSON.stringify({
-                        therapist_id: therapist.therapist_id,
-                        user_id: userId,
-                        appointment_time: appointmentTime,
-                        duration_minutes: Number(duration),
-                        meeting_link: meetingLink,
-                      }),
-                    });
-                    if (!res.ok) {
-                      const errorText = await res.text();
-                      throw new Error(
-                        errorText || "Failed to book appointment"
-                      );
-                    }
-                    setBookingSuccess("Appointment booked successfully!");
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Duration (minutes)
+                </label>
+                <select
+                  value={duration}
+                  onChange={(e) => setDuration(Number(e.target.value))}
+                  className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:border-transparent ${
+                    appointmentTime && isTimeSlotBooked(appointmentTime, duration)
+                      ? 'border-red-500 focus:ring-red-500 bg-red-50'
+                      : 'border-slate-300 focus:ring-blue-500'
+                  }`}
+                  required
+                >
+                  <option value={30}>30 minutes</option>
+                  <option value={45}>45 minutes</option>
+                  <option value={60}>60 minutes</option>
+                  <option value={90}>90 minutes</option>
+                  <option value={120}>120 minutes</option>
+                </select>
+                {appointmentTime && isTimeSlotBooked(appointmentTime, duration) && (
+                  <div className="mt-1 text-sm text-red-600">
+                    ⚠️ This duration conflicts with existing appointments
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Meeting Link
+                </label>
+                <input
+                  type="url"
+                  value={meetingLink}
+                  onChange={(e) => setMeetingLink(e.target.value)}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="https://meet.google.com/your-meeting-link"
+                  required
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  Please provide a video meeting link (Google Meet, Zoom, etc.)
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowBookingModal(false);
                     setBookingError("");
-                    setTimeout(() => {
-                      setShowBooking(false);
-                      setBookingSuccess("");
-                    }, 1800);
-                    setAppointmentTime("");
-                    setDuration(60);
-                    setMeetingLink("");
-                  } catch (err) {
-                    setBookingError(err.message || "Unknown error");
                     setBookingSuccess("");
-                  } finally {
-                    setBookingLoading(false);
-                  }
-                }}
-                className="flex flex-col gap-4"
-              >
-                <div>
-                  <label className="font-medium text-slate-700 text-sm">
-                    Date & Time
-                  </label>
-                  <input
-                    type="datetime-local"
-                    value={appointmentTime}
-                    onChange={(e) =>
-                      setAppointmentTime(e.target.value.replace("T", " "))
-                    }
-                    className="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                    min={new Date().toISOString().slice(0, 16)}
-                  />
-                </div>
-                <div>
-                  <label className="font-medium text-slate-700 text-sm">
-                    Duration (minutes)
-                  </label>
-                  <input
-                    type="number"
-                    value={duration}
-                    onChange={(e) => setDuration(e.target.value)}
-                    className="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    min={15}
-                    max={180}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="font-medium text-slate-700 text-sm">
-                    Meeting Link
-                  </label>
-                  <input
-                    type="url"
-                    value={meetingLink}
-                    onChange={(e) => setMeetingLink(e.target.value)}
-                    className="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                    placeholder="https://meet.example.com/session123"
-                  />
-                </div>
+                  }}
+                  className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
+                >
+                  Cancel
+                </button>
                 <button
                   type="submit"
-                  className="mt-4 w-full px-6 py-3 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition font-bold text-lg disabled:bg-slate-400"
-                  disabled={bookingLoading}
+                  disabled={bookingLoading || (appointmentTime && isTimeSlotBooked(appointmentTime, duration))}
+                  className={`flex-1 px-4 py-2 rounded-lg transition-colors font-medium ${
+                    bookingLoading || (appointmentTime && isTimeSlotBooked(appointmentTime, duration))
+                      ? 'bg-slate-400 text-slate-200 cursor-not-allowed'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                  }`}
                 >
-                  {bookingLoading ? "Booking..." : "Confirm Booking"}
+                  {bookingLoading ? "Booking..." : 
+                   (appointmentTime && isTimeSlotBooked(appointmentTime, duration)) ? "Time Unavailable" : 
+                   "Book Appointment"}
                 </button>
-              </form>
-            </div>
+              </div>
+            </form>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Toast for booking success */}
-        {bookingSuccess && (
-          <Toast
-            message={bookingSuccess}
-            onClose={() => setBookingSuccess("")}
-          />
-        )}
-      </div>
-      <style jsx global>{`
+      <style jsx>{`
         .animate-fade-in-up {
-          animation: fade-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+          animation: fade-in-up 0.3s ease-out;
         }
         @keyframes fade-in-up {
           from {
@@ -534,14 +550,6 @@ const TherapistDetailClient = () => {
             opacity: 1;
             transform: translateY(0);
           }
-        }
-        /* You can define your mint color in your tailwind.config.js */
-        /* For this example, we'll just use a style tag */
-        .bg-mint-500 {
-            background-color: #6ee7b7; /* Example mint color */
-        }
-        .hover\\:bg-mint-600:hover {
-            background-color: #34d399; /* Darker mint for hover */
         }
       `}</style>
     </div>
